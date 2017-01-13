@@ -1,0 +1,21 @@
+version: 1
+services:
+- name: frontend
+  containers:
+  - name: frontend
+    image: tomaskral/kompose-demo-frontend:test
+    env:
+    - KEY=value
+    - KEY2=value2
+    mappings:
+    - port: 5000:8080:80/tcp
+      type: LoadBalancer
+      name: some-name
+    - port: 5001:8081:81
+      type: ClusterIp
+      name: some-name2
+volumes:
+- name: data
+  size: 1Gi
+  mode: ReadWriteOnce
+
