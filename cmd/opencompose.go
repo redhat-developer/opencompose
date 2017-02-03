@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/tnozicka/opencompose/pkg/cmd"
+	"github.com/redhat-developer/opencompose/pkg/cmd"
 )
 
 func Run() error {

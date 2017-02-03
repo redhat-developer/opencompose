@@ -1,8 +1,8 @@
 package openshift
 
 import (
-	//"github.com/tnozicka/opencompose/pkg/object"
-	"github.com/tnozicka/opencompose/pkg/transform/kubernetes"
+	//"github.com/redhat-developer/opencompose/pkg/object"
+	"github.com/redhat-developer/opencompose/pkg/transform/kubernetes"
 	//"k8s.io/client-go/pkg/runtime"
 )
 

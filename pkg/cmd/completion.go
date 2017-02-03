@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	cmdutil "github.com/tnozicka/opencompose/pkg/cmd/util"
+	cmdutil "github.com/redhat-developer/opencompose/pkg/cmd/util"
 )
 
 var (

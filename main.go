@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/tnozicka/opencompose/cmd"
+	"github.com/redhat-developer/opencompose/cmd"
 )
 
 func main() {
