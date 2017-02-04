@@ -1,7 +1,7 @@
 package transform
 
 import (
-	"github.com/tnozicka/opencompose/pkg/object"
+	"github.com/redhat-developer/opencompose/pkg/object"
 	"k8s.io/client-go/pkg/runtime"
 )
 

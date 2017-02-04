@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-	"github.com/tnozicka/opencompose/pkg/encoding/util"
-	"github.com/tnozicka/opencompose/pkg/object"
+	"github.com/redhat-developer/opencompose/pkg/encoding/util"
+	"github.com/redhat-developer/opencompose/pkg/object"
 )
 
 type Port string

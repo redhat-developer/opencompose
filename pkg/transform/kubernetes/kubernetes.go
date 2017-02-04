@@ -3,7 +3,7 @@ package kubernetes
 import (
 	"fmt"
 
-	"github.com/tnozicka/opencompose/pkg/object"
+	"github.com/redhat-developer/opencompose/pkg/object"
 	api_v1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/runtime"
 )

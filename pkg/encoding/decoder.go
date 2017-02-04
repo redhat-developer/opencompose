@@ -2,8 +2,8 @@ package encoding
 
 import (
 	"errors"
-	"github.com/tnozicka/opencompose/pkg/encoding/v1"
-	"github.com/tnozicka/opencompose/pkg/object"
+	"github.com/redhat-developer/opencompose/pkg/encoding/v1"
+	"github.com/redhat-developer/opencompose/pkg/object"
 )
 
 type Decoder interface {

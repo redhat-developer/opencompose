@@ -20,7 +20,7 @@ func NewOpenComposeCommand(in io.Reader, out, outerr io.Writer) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "opencompose",
 		Short: "opencompose is a tool to transform OpenCompose files into Kubernetes (and OpenShift) artifacts",
-		Long:  "opencompose is a tool to transform OpenCompose files into Kubernetes (and OpenShift) definitions\n\nFind more information at https://github.com/tnozicka/opencompose.",
+		Long:  "opencompose is a tool to transform OpenCompose files into Kubernetes (and OpenShift) definitions\n\nFind more information at https://github.com/redhat-developer/opencompose.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := cmd.Help(); err != nil {
 				return err

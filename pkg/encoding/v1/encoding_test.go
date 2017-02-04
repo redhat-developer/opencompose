@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"github.com/tnozicka/opencompose/pkg/object"
+	"github.com/redhat-developer/opencompose/pkg/object"
 	"reflect"
 	"testing"
 )
