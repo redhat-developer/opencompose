@@ -1,0 +1,11 @@
+package: github.com/tnozicka/opencompose
+import:
+- package: github.com/ghodss/yaml
+- package: github.com/spf13/cobra
+- package: github.com/spf13/pflag
+- package: github.com/spf13/viper
+- package: k8s.io/client-go
+  version: ^2.0.0-alpha.1
+  subpackages:
+  - pkg/api/v1
+  - pkg/runtime
