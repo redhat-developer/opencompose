@@ -8,12 +8,8 @@ services:
     - KEY=value
     - KEY2=value2
     mappings:
-    - port: 5000:8080:80/tcp
-      type: LoadBalancer
-      name: some-name
+    - port: 5000:8080:80
     - port: 5001:8081:81
-      type: ClusterIp
-      name: some-name2
 volumes:
 - name: data
   size: 1Gi
