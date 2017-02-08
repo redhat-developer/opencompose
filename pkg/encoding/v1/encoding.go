@@ -30,13 +30,13 @@ func (raw *Port) Unmarshal() (*object.Port, error) {
 		case "udp":
 			// ok
 		case "":
-			return nil, fmt.Errorf("failed to unmarshal port '%s': invalid format (no protocol, but protocol separator specified)", raw)
+			return nil, fmt.Errorf("failed to unmarshal port '%s': invalid format (no protocol, but protocol separator specified)", *raw)
 		default:
-			return nil, fmt.Errorf("failed to unmarshal port '%s': invalid protocol '%s'", raw, p.Protocol)
+			return nil, fmt.Errorf("failed to unmarshal port '%s': invalid protocol '%s'", *raw, p.Protocol)
 		}
 
 	default:
-		return nil, fmt.Errorf("failed to unmarshal port '%s': unable to parse protocol", raw)
+		return nil, fmt.Errorf("failed to unmarshal port '%s': unable to parse protocol", *raw)
 	}
 
 	sliceByColumn := strings.Split(sliceBySlash[0], ":")
@@ -45,26 +45,26 @@ func (raw *Port) Unmarshal() (*object.Port, error) {
 		// [0]=ContainerPort [1]=HostPort [2]=ServicePort
 		p.ServicePort, err = strconv.Atoi(sliceByColumn[2])
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal port (service) '%s': %s", raw, err)
+			return nil, fmt.Errorf("failed to unmarshal port (service) '%s': %s", *raw, err)
 		}
 		fallthrough
 	case 2:
 		// [0]=ContainerPort [1]=HostPort==ServicePort
 		p.HostPort, err = strconv.Atoi(sliceByColumn[1])
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal port (host) '%s': %s", raw, err)
+			return nil, fmt.Errorf("failed to unmarshal port (host) '%s': %s", *raw, err)
 		}
 		fallthrough
 	case 1:
 		// [0] ContainerPort==HostPort==ServicePort
 		p.ContainerPort, err = strconv.Atoi(sliceByColumn[0])
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal port (container) '%s': %s", raw, err)
+			return nil, fmt.Errorf("failed to unmarshal port (container) '%s': %s", *raw, err)
 		}
 	case 0:
-		return nil, fmt.Errorf("failed to unmarshal port '%s': no items found", raw)
+		return nil, fmt.Errorf("failed to unmarshal port '%s': no items found", *raw)
 	default:
-		return nil, fmt.Errorf("failed to unmarshal port '%s': too many items (%d)", raw, l)
+		return nil, fmt.Errorf("failed to unmarshal port '%s': too many items (%d)", *raw, l)
 	}
 
 	return p, nil
