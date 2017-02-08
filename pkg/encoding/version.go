@@ -2,6 +2,7 @@ package encoding
 
 import (
 	"fmt"
+
 	"github.com/ghodss/yaml"
 )
 

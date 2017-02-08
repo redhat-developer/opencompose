@@ -2,6 +2,7 @@ package encoding
 
 import (
 	"errors"
+
 	"github.com/redhat-developer/opencompose/pkg/encoding/v1"
 	"github.com/redhat-developer/opencompose/pkg/object"
 )
