@@ -1,9 +1,10 @@
 package v1
 
 import (
-	"github.com/redhat-developer/opencompose/pkg/object"
 	"reflect"
 	"testing"
+
+	"github.com/redhat-developer/opencompose/pkg/object"
 )
 
 func TestPortUnmarshal(t *testing.T) {

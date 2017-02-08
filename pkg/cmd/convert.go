@@ -7,14 +7,14 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	cmdutil "github.com/redhat-developer/opencompose/pkg/cmd/util"
 	"github.com/redhat-developer/opencompose/pkg/encoding"
 	"github.com/redhat-developer/opencompose/pkg/object"
 	"github.com/redhat-developer/opencompose/pkg/transform"
 	"github.com/redhat-developer/opencompose/pkg/transform/kubernetes"
 	"github.com/redhat-developer/opencompose/pkg/transform/openshift"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	//"k8s.io/client-go/pkg/api"
 	//"k8s.io/client-go/pkg/runtime/schema"
 )

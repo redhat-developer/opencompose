@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/redhat-developer/opencompose/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/redhat-developer/opencompose/pkg/version"
 )
 
 var (
