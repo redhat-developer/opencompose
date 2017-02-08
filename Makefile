@@ -2,6 +2,8 @@
 .PHONY: all
 all: build
 
+SHELL :=/bin/bash
+
 GOFMT :=gofmt -s
 GOIMPORTS :=goimports -e
 
