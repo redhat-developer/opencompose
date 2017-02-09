@@ -21,7 +21,7 @@ install:
 
 .PHONY: test
 test:
-	go test ./...
+	go test $(GO_PACKAGES)
 
 .PHONY: checks
 checks: check-gofmt check-goimports check-govet
