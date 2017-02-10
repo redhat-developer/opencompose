@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"path"
+	"reflect"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -15,8 +17,9 @@ import (
 	"github.com/redhat-developer/opencompose/pkg/transform/openshift"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	//"k8s.io/client-go/pkg/api"
-	//"k8s.io/client-go/pkg/runtime/schema"
+	"k8s.io/client-go/pkg/api/meta"
+	api_v1 "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/runtime"
 )
 
 var (
@@ -108,30 +111,51 @@ func RunConvert(v *viper.Viper, cmd *cobra.Command, out, outerr io.Writer) error
 		return fmt.Errorf("transformation failed: %s", err)
 	}
 
+	scheme := runtime.NewScheme()
+	api_v1.SchemeBuilder.AddToScheme(scheme)
+
+	var writeObject func(o runtime.Object, data []byte) error
 	outputDir := v.GetString(cmdutil.Flag_OutputDir_Key)
 	if outputDir == "-" {
 		// don't use dir but write it to out (stdout)
-		fmt.Fprintf(out, "runtimeObjects: %#v\n", runtimeObjects)
-		for i, runtimeObject := range runtimeObjects {
-			if i > 0 {
-				fmt.Fprintln(out, "---")
-			}
-
-			// FIXME: (bellow)
-			versionedObject := runtimeObject
-			//versionedObject, err := api.Scheme.ConvertToVersion(runtimeObject, schema.GroupVersion{})
-			//if err != nil {
-			//	return fmt.Errorf("ConvertToVersion failed: %s", err)
-			//}
-
-			data, err := yaml.Marshal(versionedObject)
+		writeObject = func(o runtime.Object, data []byte) error {
+			_, err := fmt.Fprintln(out, "---")
 			if err != nil {
-				return fmt.Errorf("failed to marshal object: %s", err)
+				return err
 			}
-			fmt.Fprintln(out, string(data))
+
+			_, err = out.Write(data)
+			return err
 		}
 	} else {
 		// write files
+		writeObject = func(o runtime.Object, data []byte) error {
+			kind := o.GetObjectKind().GroupVersionKind().Kind
+			m, ok := o.(meta.Object)
+			if !ok {
+				return fmt.Errorf("failed to cast runtime.object to meta.object (type is %s): %s", reflect.TypeOf(o).String(), err)
+			}
+
+			filename := fmt.Sprintf("%s-%s.yaml", strings.ToLower(kind), m.GetName())
+			return ioutil.WriteFile(path.Join(outputDir, filename), data, 0644)
+		}
+	}
+
+	for _, runtimeObject := range runtimeObjects {
+		versionedObject, err := scheme.ConvertToVersion(runtimeObject, api_v1.SchemeGroupVersion)
+		if err != nil {
+			return fmt.Errorf("ConvertToVersion failed: %s", err)
+		}
+
+		data, err := yaml.Marshal(versionedObject)
+		if err != nil {
+			return fmt.Errorf("failed to marshal object: %s", err)
+		}
+
+		err = writeObject(versionedObject, data)
+		if err != nil {
+			return fmt.Errorf("failed to write object: %s", err)
+		}
 	}
 
 	return nil
