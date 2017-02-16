@@ -5,22 +5,20 @@ import (
 	"testing"
 
 	"github.com/redhat-developer/opencompose/pkg/object"
+	"gopkg.in/yaml.v2"
 )
 
-func TestPortUnmarshal(t *testing.T) {
+func TestPortMapping_UnmarshalYAML(t *testing.T) {
 	tests := []struct {
 		Succeed bool
-		RawPort Port
-		Port    *object.Port
+		RawPort string
+		Port    *PortMapping
 	}{
-		{true, "5000", &object.Port{ContainerPort: 5000}},
-		{true, "5000:80", &object.Port{ContainerPort: 5000, HostPort: 80}},
-		{true, "5000:8080:80", &object.Port{ContainerPort: 5000, HostPort: 8080, ServicePort: 80}},
-		{true, "5000:8080:80/tcp", &object.Port{ContainerPort: 5000, HostPort: 8080, ServicePort: 80, Protocol: "tcp"}},
-		{false, "", nil},
+		{true, "5000", &PortMapping{ContainerPort: 5000, HostPort: 5000, ServicePort: 5000}},
+		{true, "5000:80", &PortMapping{ContainerPort: 5000, HostPort: 5000, ServicePort: 80}},
+		{true, "5000:8080:80", &PortMapping{ContainerPort: 5000, HostPort: 8080, ServicePort: 80}},
+		{true, "", &PortMapping{}}, // UnmarshalYAML won't be even called for empty strings
 		{false, "x5000", nil},
-		{false, "5000:8080:80/", nil},
-		//{false, "5000:8080:80/tcp:90", nil},
 		{false, "5000:", nil},
 		{false, "x5000:", nil},
 		{false, ":80", nil},
@@ -45,10 +43,11 @@ func TestPortUnmarshal(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		port, err := tt.RawPort.Unmarshal()
+		var pm PortMapping
+		err := yaml.Unmarshal([]byte(tt.RawPort), &pm)
 		if err != nil {
 			if tt.Succeed {
-				t.Errorf("Failed to unmarshal %q; error %q", tt.RawPort, err)
+				t.Errorf("Failed to unmarshal %q: %s", tt.RawPort, err)
 			}
 			continue
 		}
@@ -58,24 +57,24 @@ func TestPortUnmarshal(t *testing.T) {
 			continue
 		}
 
-		if !reflect.DeepEqual(port, tt.Port) {
-			t.Errorf("Expected %#v, got %#v", tt.Port, port)
+		if !reflect.DeepEqual(pm, *tt.Port) {
+			t.Errorf("Expected %#v, got %#v", *tt.Port, pm)
 			continue
 		}
 	}
 }
 
-func TestEnvironmentVariableUnmarshal(t *testing.T) {
+func TestEnvVariable_UnmarshalYAML(t *testing.T) {
 	tests := []struct {
 		Succeed   bool
-		RawEnvVar EnvVariable
-		EnvVar    *object.EnvVariable
+		RawEnvVar string
+		EnvVar    *EnvVariable
 	}{
-		{true, "KEY=value string ", &object.EnvVariable{Key: "KEY", Value: "value string "}},
-		{true, "KEY= value", &object.EnvVariable{Key: "KEY", Value: " value"}},
-		{true, "KEY =value", &object.EnvVariable{Key: "KEY", Value: "value"}},
-		{true, "KEY==value", &object.EnvVariable{Key: "KEY", Value: "=value"}},
-		{true, "KEY=", &object.EnvVariable{Key: "KEY", Value: ""}},
+		{true, "'KEY=value string '", &EnvVariable{Key: "KEY", Value: "value string "}},
+		{true, "KEY= value", &EnvVariable{Key: "KEY", Value: " value"}},
+		{true, "KEY =value", &EnvVariable{Key: "KEY", Value: "value"}},
+		{true, "KEY==value", &EnvVariable{Key: "KEY", Value: "=value"}},
+		{true, "KEY=", &EnvVariable{Key: "KEY", Value: ""}},
 		{false, "KEY", nil},
 		{false, "=KEYvalue", nil},
 		{false, "=KEY=value", nil},
@@ -83,7 +82,8 @@ func TestEnvironmentVariableUnmarshal(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		envVar, err := tt.RawEnvVar.Unmarshal()
+		var envVar EnvVariable
+		err := yaml.Unmarshal([]byte(tt.RawEnvVar), &envVar)
 		if err != nil {
 			if tt.Succeed {
 				t.Errorf("Failed to unmarshal %#v; error %#v", tt.RawEnvVar, err)
@@ -96,14 +96,16 @@ func TestEnvironmentVariableUnmarshal(t *testing.T) {
 			continue
 		}
 
-		if !reflect.DeepEqual(envVar, tt.EnvVar) {
-			t.Errorf("Expected %#v, got %#v", tt.EnvVar, envVar)
+		if !reflect.DeepEqual(envVar, *tt.EnvVar) {
+			t.Errorf("Expected %#v, got %#v", *tt.EnvVar, envVar)
 			continue
 		}
 	}
 }
 
-func TestUnmarshal(t *testing.T) {
+func TestDecoder_Decode(t *testing.T) {
+	// TODO: make better tests w.r.t excess keys in all possible places
+	// TODO: add checking for proper error because tests can fail for other than expected reasons
 	tests := []struct {
 		Succeed     bool
 		File        string
@@ -111,35 +113,29 @@ func TestUnmarshal(t *testing.T) {
 	}{
 		{
 			true, `
-version: 1
+version: 0.1-dev
 services:
 - name: frontend
   containers:
-  - name: frontend
-    image: tomaskral/kompose-demo-frontend:test
+  - image: tomaskral/kompose-demo-frontend:test
     env:
     - KEY=value
     - KEY2=value2
-    mappings:
-    - port: 5000:8080:80/tcp
-      type: LoadBalancer
-      name: some-name
+    ports:
+    - port: 5000:8080:80
     - port: 5001:8081:81
-      type: ClusterIp
-      name: some-name2
 volumes:
 - name: data
   size: 1Gi
   mode: ReadWriteOnce
 `,
 			&object.OpenCompose{
-				Version: 1,
+				Version: Version,
 				Services: []object.Service{
 					{
 						Name: "frontend",
 						Containers: []object.Container{
 							{
-								Name:  "frontend",
 								Image: "tomaskral/kompose-demo-frontend:test",
 								Environment: []object.EnvVariable{
 									{
@@ -151,25 +147,20 @@ volumes:
 										Value: "value2",
 									},
 								},
-								Mappings: []object.Mapping{
+								Ports: []object.Port{
 									{
-										Port: object.Port{
+										Port: object.PortMapping{
 											ContainerPort: 5000,
 											HostPort:      8080,
 											ServicePort:   80,
-											Protocol:      "tcp",
 										},
-										Type: "LoadBalancer",
-										Name: "some-name",
 									},
 									{
-										Port: object.Port{
+										Port: object.PortMapping{
 											ContainerPort: 5001,
 											HostPort:      8081,
 											ServicePort:   81,
 										},
-										Type: "ClusterIp",
-										Name: "some-name2",
 									},
 								},
 							},
@@ -185,11 +176,126 @@ volumes:
 				},
 			},
 		},
+		{
+			false, `
+version: 0.1-dev
+services:
+- name: frontend
+  containers:
+  - image: tomaskral/kompose-demo-frontend:test
+    env:
+    - KEY=value
+    - KEY2=value2
+    ports:
+    - port: 5000:8080:80
+    - port: 5001:8081:81
+  - EXCESSKEY: some value
+`,
+			nil,
+		},
+		{
+			false, `
+version: 0.1-dev
+services:
+- name: frontend
+  containers:
+  - image: tomaskral/kompose-demo-frontend:test
+	env:
+	- KEY=value
+	- KEY2=value2
+	ports:
+	- port: 5000:8080:80
+	- port: 5001:8081:81
+volumes:
+- name: data
+  size: 1Gi
+  mode: ReadWriteOnce
+  EXCESSKEY: some value
+`,
+			nil,
+		},
+		{
+			false, `
+version: 0.1-dev
+services: []
+volumes: []
+EXCESSKEY: some value
+`,
+			nil,
+		},
+		{
+			true, `
+version: 0.1-dev
+services:
+- name: frontend
+  containers:
+  - image: tomaskral/kompose-demo-frontend:test
+    env:
+    - KEY=value
+    - KEY2=value2
+    ports:
+    - port: 5000:8080:80
+    - port: 5001:8081:81
+volumes: []
+`,
+			&object.OpenCompose{
+				Version: Version,
+				Services: []object.Service{
+					{
+						Name: "frontend",
+						Containers: []object.Container{
+							{
+								Image: "tomaskral/kompose-demo-frontend:test",
+								Environment: []object.EnvVariable{
+									{
+										Key:   "KEY",
+										Value: "value",
+									},
+									{
+										Key:   "KEY2",
+										Value: "value2",
+									},
+								},
+								Ports: []object.Port{
+									{
+										Port: object.PortMapping{
+											ContainerPort: 5000,
+											HostPort:      8080,
+											ServicePort:   80,
+										},
+									},
+									{
+										Port: object.PortMapping{
+											ContainerPort: 5001,
+											HostPort:      8081,
+											ServicePort:   81,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			false, `
+version: 0.1-dev
+services: []
+volumes: []
+`,
+			nil,
+		},
+		{
+			false,
+			"",
+			nil,
+		},
 	}
 
 	for _, tt := range tests {
 		data := []byte(tt.File)
-		openCompose, err := (&Decoder{}).Unmarshal(data)
+		openCompose, err := (&Decoder{}).Decode(data)
 		if err != nil {
 			if tt.Succeed {
 				t.Errorf("Failed to unmarshal %#v; error %#v", tt.File, err)
@@ -203,7 +309,7 @@ volumes:
 		}
 
 		if !reflect.DeepEqual(openCompose, tt.OpenCompose) {
-			t.Errorf("Expected %#v, got %#v", tt.OpenCompose, openCompose)
+			t.Errorf("Expected: %#v; got: %#v", tt.OpenCompose, openCompose)
 			continue
 		}
 	}

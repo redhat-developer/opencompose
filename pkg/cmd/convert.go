@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/ghodss/yaml"
+	kyaml "github.com/ghodss/yaml" // we intentionally use a different yaml package here for Kubernetes objects because gopkg.in/yaml.v2 is not meant to serialize k8s objects because of UnmarshalJSON/UnmarshalYAML and `json:""`/`yaml:""` dichotomy resulting in panic when used
 	cmdutil "github.com/redhat-developer/opencompose/pkg/cmd/util"
 	"github.com/redhat-developer/opencompose/pkg/encoding"
 	"github.com/redhat-developer/opencompose/pkg/object"
@@ -73,7 +73,7 @@ func GetValidatedObject(v *viper.Viper, cmd *cobra.Command, out, outerr io.Write
 			return nil, fmt.Errorf("could not find decoder for file '%s': %s", file, err)
 		}
 
-		o, err := decoder.Unmarshal(data)
+		o, err := decoder.Decode(data)
 		if err != nil {
 			return nil, fmt.Errorf("could not unmarsha data for file '%s': %s", file, err)
 		}
@@ -147,7 +147,7 @@ func RunConvert(v *viper.Viper, cmd *cobra.Command, out, outerr io.Writer) error
 			return fmt.Errorf("ConvertToVersion failed: %s", err)
 		}
 
-		data, err := yaml.Marshal(versionedObject)
+		data, err := kyaml.Marshal(versionedObject)
 		if err != nil {
 			return fmt.Errorf("failed to marshal object: %s", err)
 		}

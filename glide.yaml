@@ -1,4 +1,4 @@
-package: github.com/tnozicka/opencompose
+package: github.com/redhat-developer/opencompose
 import:
 - package: github.com/ghodss/yaml
 - package: github.com/spf13/cobra
@@ -9,3 +9,4 @@ import:
   subpackages:
   - pkg/api/v1
   - pkg/runtime
+- package: gopkg.in/yaml.v2

@@ -1,17 +1,13 @@
 package object
 
-type Port struct {
-	Address       string
+type PortMapping struct {
 	ContainerPort int
 	HostPort      int
 	ServicePort   int
-	Protocol      string
 }
 
-type Mapping struct {
-	Port Port
-	Type string
-	Name string
+type Port struct {
+	Port PortMapping
 }
 
 type EnvVariable struct {
@@ -20,10 +16,9 @@ type EnvVariable struct {
 }
 
 type Container struct {
-	Name        string
 	Image       string
 	Environment []EnvVariable
-	Mappings    []Mapping
+	Ports       []Port
 }
 
 type Service struct {
@@ -32,14 +27,13 @@ type Service struct {
 }
 
 type Volume struct {
-	// TODO: remove tags when we have Go 1.8
-	Name string `json:"name"`
-	Size string `json:"size,omitempty"`
-	Mode string `json:"mode,omitempty"`
+	Name string
+	Size string
+	Mode string
 }
 
 type OpenCompose struct {
-	Version  int
+	Version  string
 	Services []Service
 	Volumes  []Volume
 }
