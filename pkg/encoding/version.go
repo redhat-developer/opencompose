@@ -3,18 +3,18 @@ package encoding
 import (
 	"fmt"
 
-	"github.com/ghodss/yaml"
+	"gopkg.in/yaml.v2"
 )
 
 type Version struct {
-	Version int `json:"version,omitempty"`
+	Version string `yaml:"version,omitempty"`
 }
 
-func GetVersion(data []byte) (int, error) {
+func GetVersion(data []byte) (string, error) {
 	var v Version
 	err := yaml.Unmarshal(data, &v)
 	if err != nil {
-		return 0, fmt.Errorf("failed to unmarshal OpenCompose version: %s", err)
+		return "", fmt.Errorf("failed to unmarshal OpenCompose version: %s", err)
 	}
 	return v.Version, nil
 }

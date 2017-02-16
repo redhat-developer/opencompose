@@ -1,14 +1,14 @@
 package encoding
 
 import (
-	"errors"
+	"fmt"
 
 	"github.com/redhat-developer/opencompose/pkg/encoding/v1"
 	"github.com/redhat-developer/opencompose/pkg/object"
 )
 
 type Decoder interface {
-	Unmarshal([]byte) (*object.OpenCompose, error)
+	Decode([]byte) (*object.OpenCompose, error)
 }
 
 func GetDecoderFor(data []byte) (Decoder, error) {
@@ -18,9 +18,9 @@ func GetDecoderFor(data []byte) (Decoder, error) {
 	}
 
 	switch version {
-	case 1:
+	case v1.Version:
 		return &v1.Decoder{}, nil
 	default:
-		return nil, errors.New("unsupported version")
+		return nil, fmt.Errorf("unsupported version %q", version)
 	}
 }

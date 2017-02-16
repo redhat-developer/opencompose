@@ -5,248 +5,273 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ghodss/yaml"
 	"github.com/redhat-developer/opencompose/pkg/encoding/util"
 	"github.com/redhat-developer/opencompose/pkg/object"
+	"gopkg.in/yaml.v2"
 )
 
-type Port string
+const (
+	Version = "0.1-dev" // TODO: replace with "1" once we reach that point
+)
 
-func (raw *Port) Unmarshal() (*object.Port, error) {
-	// TODO: support binding by address
-	p := &object.Port{}
-	var err error
+type ResourceName string
 
-	sliceBySlash := strings.Split(string(*raw), "/")
-	switch l := len(sliceBySlash); l {
-	case 1:
-		// no protocol specified; we want to retain the information about it being empty
-	case 2:
-		// [1] - protocol
-		p.Protocol = sliceBySlash[1]
-		switch p.Protocol {
-		case "tcp":
-			// ok
-		case "udp":
-			// ok
-		case "":
-			return nil, fmt.Errorf("failed to unmarshal port '%s': invalid format (no protocol, but protocol separator specified)", *raw)
-		default:
-			return nil, fmt.Errorf("failed to unmarshal port '%s': invalid protocol '%s'", *raw, p.Protocol)
-		}
-
-	default:
-		return nil, fmt.Errorf("failed to unmarshal port '%s': unable to parse protocol", *raw)
-	}
-
-	sliceByColumn := strings.Split(sliceBySlash[0], ":")
-	switch l := len(sliceByColumn); l {
-	case 3:
-		// [0]=ContainerPort [1]=HostPort [2]=ServicePort
-		p.ServicePort, err = strconv.Atoi(sliceByColumn[2])
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal port (service) '%s': %s", *raw, err)
-		}
-		fallthrough
-	case 2:
-		// [0]=ContainerPort [1]=HostPort==ServicePort
-		p.HostPort, err = strconv.Atoi(sliceByColumn[1])
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal port (host) '%s': %s", *raw, err)
-		}
-		fallthrough
-	case 1:
-		// [0] ContainerPort==HostPort==ServicePort
-		p.ContainerPort, err = strconv.Atoi(sliceByColumn[0])
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal port (container) '%s': %s", *raw, err)
-		}
-	case 0:
-		return nil, fmt.Errorf("failed to unmarshal port '%s': no items found", *raw)
-	default:
-		return nil, fmt.Errorf("failed to unmarshal port '%s': too many items (%d)", *raw, l)
-	}
-
-	return p, nil
-}
-
-type Mapping struct {
-	Name string `json:"name,omitempty"`
-	Type string `json:"type,omitempty"`
-	Port Port   `json:"port,omitempty"`
-}
-
-func (raw *Mapping) Unmarshal() (*object.Mapping, error) {
-	// name, type
-	m := &object.Mapping{
-		Name: raw.Name,
-		Type: raw.Type,
+func (rn *ResourceName) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var name string
+	err := unmarshal(&name)
+	if err != nil {
+		return err
 	}
 
 	// validate name
-	if err := util.ValidateResourceName(m.Name); err != nil {
-		return nil, fmt.Errorf("service name: %s", err)
+	if err := util.ValidateResourceName(name); err != nil {
+		return fmt.Errorf("failed to unmarshal ResourceName - invalid name: %s", err)
 	}
 
-	// TODO: validate type
+	*rn = ResourceName(name)
 
-	// port
-	var err error
-	port, err := raw.Port.Unmarshal()
-	if err != nil {
-		return nil, err
-	}
-	m.Port = *port
-
-	return m, nil
+	return nil
 }
 
-type EnvVariable string
+type PortMapping struct {
+	ContainerPort int
+	HostPort      int
+	ServicePort   int
+}
 
-func (raw *EnvVariable) Unmarshal() (*object.EnvVariable, error) {
-	splitSlice := strings.SplitN(string(*raw), "=", 2)
+func (pm *PortMapping) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	err := unmarshal(&s)
+	if err != nil {
+		return err
+	}
+
+	sliceByColumn := strings.Split(s, ":")
+	l := len(sliceByColumn)
+	switch l {
+	case 3:
+		// [0]=ContainerPort [1]=HostPort [2]=ServicePort
+		pm.HostPort, err = strconv.Atoi(sliceByColumn[1])
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal port (host) %q: %s", s, err)
+		}
+		fallthrough
+	case 2:
+		// [0]=ContainerPort [1]=ServicePort
+		pm.ServicePort, err = strconv.Atoi(sliceByColumn[l-1])
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal port (service) %q: %s", s, err)
+		}
+		fallthrough
+	case 1:
+		// [0] ContainerPort
+		pm.ContainerPort, err = strconv.Atoi(sliceByColumn[0])
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal port (container) %q: %s", s, err)
+		}
+	case 0:
+		return fmt.Errorf("failed to unmarshal port %q: no items found", s)
+	default:
+		return fmt.Errorf("failed to unmarshal port %q: too many items (%d)", s, l)
+	}
+
+	// Fill in default ports by deduction
+	switch l {
+	case 1:
+		// [0] ContainerPort==HostPort==ServicePort
+		pm.ServicePort = pm.ContainerPort
+		fallthrough
+	case 2:
+		// [0] ContainerPort==HostPort [1]=ServicePort
+		pm.HostPort = pm.ContainerPort
+	}
+
+	return nil
+}
+
+type Port struct {
+	Port PortMapping `yaml:"port"`
+}
+
+func (v *Port) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type PortAlias Port
+	var st struct {
+		PortAlias `yaml:",inline"`
+		Leftovers map[string]interface{} `yaml:",inline"` // Catches all undefined fields and must be empty after parsing.
+	}
+	err := unmarshal(&st)
+	if err != nil {
+		return err
+	}
+
+	if len(st.Leftovers) > 0 {
+		return util.NewExcessKeysErrorFromMap("Port", st.Leftovers)
+	}
+
+	*v = Port(st.PortAlias)
+
+	return nil
+}
+
+type EnvVariable struct {
+	Key   string
+	Value string
+}
+
+func (raw *EnvVariable) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	err := unmarshal(&s)
+	if err != nil {
+		return err
+	}
+
+	splitSlice := strings.SplitN(s, "=", 2)
 
 	if len(splitSlice) != 2 {
-		return nil, fmt.Errorf("failed to unmarshal environment variable '%s'", string(*raw))
+		return fmt.Errorf("failed to unmarshal environment variable '%s'", s)
 	}
 
 	if splitSlice[0] == "" {
-		return nil, fmt.Errorf("failed to unmarshal environment variable '%s': no key", string(*raw))
+		return fmt.Errorf("failed to unmarshal environment variable '%s': no key", s)
 	}
 
-	e := &object.EnvVariable{
-		Key:   strings.TrimSpace(splitSlice[0]),
-		Value: splitSlice[1],
-	}
+	raw.Key = strings.TrimSpace(splitSlice[0])
+	raw.Value = splitSlice[1]
 
-	return e, nil
+	return nil
 }
+
+type ImageRef string
+
+// FIXME: implement ImageRef unmarshalling
 
 type Container struct {
-	Name     string        `json:"name"`
-	Image    string        `json:"image"`
-	Env      []EnvVariable `json:"env,omitempty"`
-	Mappings []Mapping     `json:"mappings,omitempty"`
+	Image ImageRef      `yaml:"image"`
+	Env   []EnvVariable `yaml:"env,omitempty"`
+	Ports []Port        `yaml:"ports,omitempty"`
 }
 
-func (raw *Container) Unmarshal() (*object.Container, error) {
-	// name, image
-	c := &object.Container{
-		Name:  raw.Name,
-		Image: raw.Image,
+func (c *Container) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type ContainerAlias Container
+	var st struct {
+		ContainerAlias `yaml:",inline"`
+		Leftovers      map[string]interface{} `yaml:",inline"` // Catches all undefined fields and must be empty after parsing.
+	}
+	err := unmarshal(&st)
+	if err != nil {
+		return err
 	}
 
-	// validate name
-	if err := util.ValidateResourceName(c.Name); err != nil {
-		return nil, fmt.Errorf("service name: %s", err)
+	if len(st.Leftovers) > 0 {
+		return util.NewExcessKeysErrorFromMap("Container", st.Leftovers)
 	}
 
-	// TODO: validate image ref
+	*c = Container(st.ContainerAlias)
 
-	// environment
-	for _, rawEnv := range raw.Env {
-		envVar, err := rawEnv.Unmarshal()
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal environment variable: %s", err)
-		}
-		c.Environment = append(c.Environment, *envVar)
-	}
-
-	// mappings
-	for _, rawMapping := range raw.Mappings {
-		envMapping, err := rawMapping.Unmarshal()
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal mapping: %s", err)
-		}
-		c.Mappings = append(c.Mappings, *envMapping)
-	}
-
-	return c, nil
+	return nil
 }
 
 type Service struct {
-	Name       string      `json:"name"`
-	Containers []Container `json:"containers"`
+	Name       ResourceName `yaml:"name"`
+	Containers []Container  `yaml:"containers"`
 }
 
-func (raw *Service) Unmarshal() (*object.Service, error) {
-	// name
-	s := &object.Service{
-		Name: raw.Name,
+func (s *Service) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type ServiceAlias Service
+	var st struct {
+		ServiceAlias `yaml:",inline"`
+		Leftovers    map[string]interface{} `yaml:",inline"` // Catches all undefined fields and must be empty after parsing.
+	}
+	err := unmarshal(&st)
+	if err != nil {
+		return err
 	}
 
-	// validate name
-	if err := util.ValidateResourceName(s.Name); err != nil {
-		return nil, fmt.Errorf("service name: %s", err)
+	if len(st.Leftovers) > 0 {
+		return util.NewExcessKeysErrorFromMap("Service", st.Leftovers)
 	}
 
-	// containers
-	for _, rawContainer := range raw.Containers {
-		container, err := rawContainer.Unmarshal()
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal container: %s", err)
-		}
-		s.Containers = append(s.Containers, *container)
-	}
+	*s = Service(st.ServiceAlias)
 
-	return s, nil
+	return nil
 }
+
+type VolumeSize string
+
+// FIXME: add VolumeSize parsing/validation
+
+type VolumeMode string
+
+// FIXME: add VolumeMode parsing/validation
 
 type Volume struct {
-	Name string `json:"name"`
-	Size string `json:"size,omitempty"`
-	Mode string `json:"mode,omitempty"`
+	Name ResourceName `yaml:"name"`
+	Size VolumeSize   `yaml:"size,omitempty"`
+	Mode VolumeMode   `yaml:"mode,omitempty"`
 }
 
-func (raw *Volume) Unmarshal() (*object.Volume, error) {
-	v := object.Volume(*raw)
-
-	// validate name
-	if err := util.ValidateResourceName(v.Name); err != nil {
-		return nil, fmt.Errorf("volume name: %s", err)
+func (v *Volume) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type VolumeAlias Volume
+	var st struct {
+		VolumeAlias `yaml:",inline"`
+		Leftovers   map[string]interface{} `yaml:",inline"` // Catches all undefined fields and must be empty after parsing.
+	}
+	err := unmarshal(&st)
+	if err != nil {
+		return err
 	}
 
-	// TODO: validate size
+	if len(st.Leftovers) > 0 {
+		return util.NewExcessKeysErrorFromMap("Volume", st.Leftovers)
+	}
 
-	// TODO: validate mode
+	*v = Volume(st.VolumeAlias)
 
-	return &v, nil
+	return nil
+}
+
+type VersionString string
+
+func (vs *VersionString) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var v string
+	err := unmarshal(&v)
+	if err != nil {
+		return err
+	}
+
+	if v != Version {
+		return fmt.Errorf("can't unmarshal OpenCompose version - expected %q, got %q", Version, v)
+	}
+
+	*vs = VersionString(v)
+
+	return nil
 }
 
 type OpenCompose struct {
-	Version  int       `json:"version,omitempty"`
-	Services []Service `json:"services"`
-	Volumes  []Volume  `json:"volumes,omitempty"`
+	Version  VersionString `yaml:"version"`
+	Services []Service     `yaml:"services"`
+	Volumes  []Volume      `yaml:"volumes,omitempty"`
 }
 
-func (raw *OpenCompose) Unmarshal() (*object.OpenCompose, error) {
-	// version
-	if raw.Version != 1 {
-		return nil, fmt.Errorf("unmarshal OpenCompose (version 1): unsupported version %d", raw.Version)
+func (oc *OpenCompose) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type OpenComposeAlias OpenCompose
+	var st struct {
+		OpenComposeAlias `yaml:",inline"`
+		Leftovers        map[string]interface{} `yaml:",inline"` // Catches all undefined fields and must be empty after parsing.
 	}
-	o := &object.OpenCompose{
-		Version: raw.Version,
-	}
-
-	// services
-	for _, rawService := range raw.Services {
-		service, err := rawService.Unmarshal()
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal service: %s", err)
-		}
-		o.Services = append(o.Services, *service)
+	err := unmarshal(&st)
+	if err != nil {
+		return err
 	}
 
-	// volumes
-	for _, rawVolume := range raw.Volumes {
-		volume, err := rawVolume.Unmarshal()
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal volume: %s", err)
-		}
-		o.Volumes = append(o.Volumes, *volume)
+	if len(st.Leftovers) > 0 {
+		return util.NewExcessKeysErrorFromMap("OpenCompose", st.Leftovers)
 	}
 
-	return o, nil
+	*oc = OpenCompose(st.OpenComposeAlias)
+
+	return nil
 }
 
 type Decoder struct{}
@@ -258,19 +283,72 @@ type Decoder struct{}
 // and there is already accepted proposal for Go 1.9 about json alternative
 // https://github.com/golang/go/issues/15314 so hopefully yaml gets something similar
 // otherwise we have to ditch the decoder and write our own using reflect
-func (u *Decoder) Unmarshal(data []byte) (*object.OpenCompose, error) {
-	rawOpenCompose := &OpenCompose{}
+func (d *Decoder) Decode(data []byte) (*object.OpenCompose, error) {
+	var v1 OpenCompose
 	// TODO: check for excess fields (see above)
-	err := yaml.Unmarshal(data, rawOpenCompose)
+	err := yaml.Unmarshal(data, &v1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal OpenCompose: %s", err)
 	}
 
-	// OpenCompose spec isn't just pure yaml. It has other formats embedded inside
-	// and we need to unmarshal them as well
-	openCompose, err := rawOpenCompose.Unmarshal()
+	// UnmarshalYAML can't check for empty values because in that case it won't get even called
+	// We have to do it here manually
+	err = util.ValidateRequiredFields(v1)
 	if err != nil {
 		return nil, err
+	}
+
+	// convert it from our version to internal definitions
+	openCompose := &object.OpenCompose{
+		Version: string(v1.Version),
+	}
+
+	// convert services
+	for _, s := range v1.Services {
+		os := object.Service{
+			Name: string(s.Name),
+		}
+
+		// convert containers
+		for _, c := range s.Containers {
+			oc := object.Container{
+				Image: string(c.Image),
+			}
+
+			// convert ports
+			for _, p := range c.Ports {
+				oc.Ports = append(oc.Ports, object.Port{
+					Port: object.PortMapping{
+						ContainerPort: p.Port.ContainerPort,
+						HostPort:      p.Port.HostPort,
+						ServicePort:   p.Port.ServicePort,
+					},
+				})
+			}
+
+			// convert env
+			for _, e := range c.Env {
+				oc.Environment = append(oc.Environment, object.EnvVariable{
+					Key:   e.Key,
+					Value: e.Value,
+				})
+			}
+
+			os.Containers = append(os.Containers, oc)
+		}
+
+		openCompose.Services = append(openCompose.Services, os)
+	}
+
+	// convert volumes
+	for _, v := range v1.Volumes {
+		ov := object.Volume{
+			Name: string(v.Name),
+			Size: string(v.Size),
+			Mode: string(v.Mode),
+		}
+
+		openCompose.Volumes = append(openCompose.Volumes, ov)
 	}
 
 	return openCompose, nil
