@@ -1,5 +1,5 @@
 hash: f87419d268f018e8133b9428ce8db6e994db351d555cd66128d287c2ac7d5d5d
-updated: 2017-02-17T15:41:50.646962106+01:00
+updated: 2017-02-17T17:41:32.079481976+01:00
 imports:
 - name: github.com/davecgh/go-spew
   version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
@@ -121,11 +121,14 @@ imports:
   version: e121606b0d09b2e1c467183ee46217fa85a6b672
   subpackages:
   - pkg/api
+  - pkg/api/install
   - pkg/api/meta
   - pkg/api/meta/metatypes
   - pkg/api/resource
   - pkg/api/unversioned
   - pkg/api/v1
+  - pkg/apimachinery
+  - pkg/apimachinery/registered
   - pkg/apis/autoscaling
   - pkg/apis/batch
   - pkg/apis/extensions

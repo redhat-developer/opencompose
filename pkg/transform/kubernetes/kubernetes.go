@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/redhat-developer/opencompose/pkg/object"
+	_ "k8s.io/client-go/pkg/api/install"
 	api_v1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/runtime"
 	"k8s.io/client-go/pkg/util/intstr"
