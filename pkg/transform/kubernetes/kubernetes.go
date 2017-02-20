@@ -6,6 +6,8 @@ import (
 	"github.com/redhat-developer/opencompose/pkg/object"
 	_ "k8s.io/client-go/pkg/api/install"
 	api_v1 "k8s.io/client-go/pkg/api/v1"
+	_ "k8s.io/client-go/pkg/apis/extensions/install"
+	ext_v1beta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/runtime"
 	"k8s.io/client-go/pkg/util/intstr"
 )
@@ -50,8 +52,59 @@ func (t *Transformer) CreateServices(o *object.Service) ([]runtime.Object, error
 
 // Create k8s deployments for OpenCompose service
 func (t *Transformer) CreateDeployments(o *object.Service) ([]runtime.Object, error) {
-	// TODO: implement
-	return nil, nil
+	result := []runtime.Object{}
+
+	d := &ext_v1beta1.Deployment{
+		ObjectMeta: api_v1.ObjectMeta{
+			Name: o.Name,
+			Labels: map[string]string{
+				"service": o.Name,
+			},
+		},
+		Spec: ext_v1beta1.DeploymentSpec{
+			Strategy: ext_v1beta1.DeploymentStrategy{
+				// TODO: make it configurable
+				Type: ext_v1beta1.RollingUpdateDeploymentStrategyType,
+				// TODO: make it configurable
+				RollingUpdate: nil,
+			},
+			Template: api_v1.PodTemplateSpec{
+				ObjectMeta: api_v1.ObjectMeta{
+					Labels: map[string]string{
+						"service": o.Name,
+					},
+				},
+				Spec: api_v1.PodSpec{},
+			},
+		},
+	}
+
+	for i, c := range o.Containers {
+		kc := api_v1.Container{
+			Name:  fmt.Sprintf("%s-%d", o.Name, i),
+			Image: c.Image,
+		}
+
+		for _, e := range c.Environment {
+			kc.Env = append(kc.Env, api_v1.EnvVar{
+				Name:  e.Key,
+				Value: e.Value,
+			})
+		}
+
+		for _, p := range c.Ports {
+			kc.Ports = append(kc.Ports, api_v1.ContainerPort{
+				Name:          fmt.Sprintf("port-%d", p.Port.ContainerPort),
+				ContainerPort: int32(p.Port.ContainerPort),
+			})
+		}
+
+		d.Spec.Template.Spec.Containers = append(d.Spec.Template.Spec.Containers, kc)
+
+		result = append(result, d)
+	}
+
+	return result, nil
 }
 
 func (t *Transformer) TransformServices(services []object.Service) ([]runtime.Object, error) {
