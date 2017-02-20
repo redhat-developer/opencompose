@@ -35,7 +35,6 @@ func (rn *ResourceName) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 type PortMapping struct {
 	ContainerPort int
-	HostPort      int
 	ServicePort   int
 }
 
@@ -49,13 +48,6 @@ func (pm *PortMapping) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	sliceByColumn := strings.Split(s, ":")
 	l := len(sliceByColumn)
 	switch l {
-	case 3:
-		// [0]=ContainerPort [1]=HostPort [2]=ServicePort
-		pm.HostPort, err = strconv.Atoi(sliceByColumn[1])
-		if err != nil {
-			return fmt.Errorf("failed to unmarshal port (host) %q: %s", s, err)
-		}
-		fallthrough
 	case 2:
 		// [0]=ContainerPort [1]=ServicePort
 		pm.ServicePort, err = strconv.Atoi(sliceByColumn[l-1])
@@ -78,12 +70,8 @@ func (pm *PortMapping) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// Fill in default ports by deduction
 	switch l {
 	case 1:
-		// [0] ContainerPort==HostPort==ServicePort
+		// [0] ContainerPort==ServicePort
 		pm.ServicePort = pm.ContainerPort
-		fallthrough
-	case 2:
-		// [0] ContainerPort==HostPort [1]=ServicePort
-		pm.HostPort = pm.ContainerPort
 	}
 
 	return nil
@@ -320,7 +308,6 @@ func (d *Decoder) Decode(data []byte) (*object.OpenCompose, error) {
 				oc.Ports = append(oc.Ports, object.Port{
 					Port: object.PortMapping{
 						ContainerPort: p.Port.ContainerPort,
-						HostPort:      p.Port.HostPort,
 						ServicePort:   p.Port.ServicePort,
 					},
 				})

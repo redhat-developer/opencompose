@@ -14,9 +14,8 @@ func TestPortMapping_UnmarshalYAML(t *testing.T) {
 		RawPort string
 		Port    *PortMapping
 	}{
-		{true, "5000", &PortMapping{ContainerPort: 5000, HostPort: 5000, ServicePort: 5000}},
-		{true, "5000:80", &PortMapping{ContainerPort: 5000, HostPort: 5000, ServicePort: 80}},
-		{true, "5000:8080:80", &PortMapping{ContainerPort: 5000, HostPort: 8080, ServicePort: 80}},
+		{true, "5000", &PortMapping{ContainerPort: 5000, ServicePort: 5000}},
+		{true, "5000:80", &PortMapping{ContainerPort: 5000, ServicePort: 80}},
 		{true, "", &PortMapping{}}, // UnmarshalYAML won't be even called for empty strings
 		{false, "x5000", nil},
 		{false, "5000:", nil},
@@ -122,8 +121,8 @@ services:
     - KEY=value
     - KEY2=value2
     ports:
-    - port: 5000:8080:80
-    - port: 5001:8081:81
+    - port: 5000:80
+    - port: 5001:81
 volumes:
 - name: data
   size: 1Gi
@@ -151,14 +150,12 @@ volumes:
 									{
 										Port: object.PortMapping{
 											ContainerPort: 5000,
-											HostPort:      8080,
 											ServicePort:   80,
 										},
 									},
 									{
 										Port: object.PortMapping{
 											ContainerPort: 5001,
-											HostPort:      8081,
 											ServicePort:   81,
 										},
 									},
@@ -187,8 +184,8 @@ services:
     - KEY=value
     - KEY2=value2
     ports:
-    - port: 5000:8080:80
-    - port: 5001:8081:81
+    - port: 5000:80
+    - port: 5001:81
   - EXCESSKEY: some value
 `,
 			nil,
@@ -204,8 +201,8 @@ services:
 	- KEY=value
 	- KEY2=value2
 	ports:
-	- port: 5000:8080:80
-	- port: 5001:8081:81
+	- port: 5000:80
+	- port: 5001:81
 volumes:
 - name: data
   size: 1Gi
@@ -234,8 +231,8 @@ services:
     - KEY=value
     - KEY2=value2
     ports:
-    - port: 5000:8080:80
-    - port: 5001:8081:81
+    - port: 5000:80
+    - port: 5001:81
 volumes: []
 `,
 			&object.OpenCompose{
@@ -260,14 +257,12 @@ volumes: []
 									{
 										Port: object.PortMapping{
 											ContainerPort: 5000,
-											HostPort:      8080,
 											ServicePort:   80,
 										},
 									},
 									{
 										Port: object.PortMapping{
 											ContainerPort: 5001,
-											HostPort:      8081,
 											ServicePort:   81,
 										},
 									},
