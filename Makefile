@@ -60,6 +60,11 @@ format-goimports:
 
 do-strip-vendor :=glide-vc --only-code --no-tests --no-test-imports --no-legal-files
 
+.PHONY: recreate-vendor
+recreate-vendor:
+	glide install --strip-vendor
+	$(do-strip-vendor)
+
 .PHONY: update-vendor
 update-vendor:
 	glide update --strip-vendor

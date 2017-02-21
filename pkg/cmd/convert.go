@@ -17,8 +17,8 @@ import (
 	"github.com/redhat-developer/opencompose/pkg/transform/openshift"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/meta"
-	api_v1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/pkg/runtime"
 )
 
@@ -111,9 +111,6 @@ func RunConvert(v *viper.Viper, cmd *cobra.Command, out, outerr io.Writer) error
 		return fmt.Errorf("transformation failed: %s", err)
 	}
 
-	scheme := runtime.NewScheme()
-	api_v1.SchemeBuilder.AddToScheme(scheme)
-
 	var writeObject func(o runtime.Object, data []byte) error
 	outputDir := v.GetString(cmdutil.Flag_OutputDir_Key)
 	if outputDir == "-" {
@@ -142,17 +139,22 @@ func RunConvert(v *viper.Viper, cmd *cobra.Command, out, outerr io.Writer) error
 	}
 
 	for _, runtimeObject := range runtimeObjects {
-		versionedObject, err := scheme.ConvertToVersion(runtimeObject, api_v1.SchemeGroupVersion)
+		gvk, isUnversioned, err := api.Scheme.ObjectKind(runtimeObject)
 		if err != nil {
 			return fmt.Errorf("ConvertToVersion failed: %s", err)
 		}
+		if isUnversioned {
+			return fmt.Errorf("ConvertToVersion failed: can't output unversioned type: %T", runtimeObject)
+		}
 
-		data, err := kyaml.Marshal(versionedObject)
+		runtimeObject.GetObjectKind().SetGroupVersionKind(gvk)
+
+		data, err := kyaml.Marshal(runtimeObject)
 		if err != nil {
 			return fmt.Errorf("failed to marshal object: %s", err)
 		}
 
-		err = writeObject(versionedObject, data)
+		err = writeObject(runtimeObject, data)
 		if err != nil {
 			return fmt.Errorf("failed to write object: %s", err)
 		}
