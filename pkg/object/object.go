@@ -2,7 +2,6 @@ package object
 
 type PortMapping struct {
 	ContainerPort int
-	HostPort      int
 	ServicePort   int
 }
 
