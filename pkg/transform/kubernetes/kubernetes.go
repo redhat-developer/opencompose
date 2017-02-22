@@ -41,7 +41,7 @@ func (t *Transformer) CreateServices(o *object.Service) ([]runtime.Object, error
 			s.Spec.Ports = append(s.Spec.Ports, api_v1.ServicePort{
 				Name:       fmt.Sprintf("port-%d", p.Port.ServicePort),
 				Port:       int32(p.Port.ServicePort),
-				TargetPort: intstr.FromInt(p.Port.HostPort),
+				TargetPort: intstr.FromInt(p.Port.ContainerPort),
 			})
 		}
 		result = append(result, s)
