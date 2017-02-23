@@ -77,8 +77,30 @@ func (pm *PortMapping) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
+type PortType object.PortType
+
+func (pt *PortType) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	err := unmarshal(&s)
+	if err != nil {
+		return err
+	}
+
+	switch s {
+	case "internal":
+		*pt = PortType(object.PortType_Internal)
+	case "external":
+		*pt = PortType(object.PortType_External)
+	default:
+		return fmt.Errorf("failed to unmarshal port type: invalid port type %q", s)
+	}
+
+	return nil
+}
+
 type Port struct {
 	Port PortMapping `yaml:"port"`
+	Type PortType    `yaml:"type,omitempty"`
 }
 
 func (v *Port) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -310,6 +332,7 @@ func (d *Decoder) Decode(data []byte) (*object.OpenCompose, error) {
 						ContainerPort: p.Port.ContainerPort,
 						ServicePort:   p.Port.ServicePort,
 					},
+					Type: object.PortType(p.Type),
 				})
 			}
 

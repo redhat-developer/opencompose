@@ -18,13 +18,8 @@ type Transformer struct{}
 func (t *Transformer) CreateServices(o *object.Service) ([]runtime.Object, error) {
 	result := []runtime.Object{}
 
-	for _, c := range o.Containers {
-		// We don't want to generate service if there are no ports to be mapped
-		if len(c.Ports) == 0 {
-			continue
-		}
-
-		s := &api_v1.Service{
+	Service := func() *api_v1.Service {
+		return &api_v1.Service{
 			ObjectMeta: api_v1.ObjectMeta{
 				Name: o.Name,
 				Labels: map[string]string{
@@ -37,14 +32,46 @@ func (t *Transformer) CreateServices(o *object.Service) ([]runtime.Object, error
 				},
 			},
 		}
+	}
+
+	is := Service()
+	is.Spec.Type = api_v1.ServiceTypeClusterIP
+
+	es := Service()
+	es.Spec.Type = api_v1.ServiceTypeLoadBalancer
+
+	for _, c := range o.Containers {
+		// We don't want to generate service if there are no ports to be mapped
+		if len(c.Ports) == 0 {
+			continue
+		}
+
 		for _, p := range c.Ports {
+			var s *api_v1.Service
+			switch p.Type {
+			case object.PortType_Internal:
+				s = is
+			case object.PortType_External:
+				s = es
+			default:
+				// There is a mistake in our code; and in Golang because it doesn't have strongly typed enumerations :)
+				return result, fmt.Errorf("Internal error: unknown PortType %#v", p.Type)
+			}
+
 			s.Spec.Ports = append(s.Spec.Ports, api_v1.ServicePort{
 				Name:       fmt.Sprintf("port-%d", p.Port.ServicePort),
 				Port:       int32(p.Port.ServicePort),
 				TargetPort: intstr.FromInt(p.Port.ContainerPort),
 			})
 		}
-		result = append(result, s)
+	}
+
+	if len(is.Spec.Ports) > 0 {
+		result = append(result, is)
+	}
+
+	if len(es.Spec.Ports) > 0 {
+		result = append(result, es)
 	}
 
 	return result, nil

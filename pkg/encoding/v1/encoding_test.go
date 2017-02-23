@@ -63,6 +63,48 @@ func TestPortMapping_UnmarshalYAML(t *testing.T) {
 	}
 }
 
+func TestPortType_UnmarshalYAML(t *testing.T) {
+	tests := []struct {
+		Succeed     bool
+		RawPortType string
+		PortType    object.PortType
+	}{
+		{true, "", object.PortType_Internal}, // UnmarshalYAML won't be even called for empty strings -> default value
+		{true, "internal", object.PortType_Internal},
+		{true, "external", object.PortType_External},
+		{false, "'internal '", 0},
+		{false, "' internal'", 0},
+		{false, "' internal '", 0},
+		{false, "'external '", 0},
+		{false, "' external'", 0},
+		{false, "' external '", 0},
+		{false, "'something '", 0},
+		{false, "' something'", 0},
+		{false, "' something '", 0},
+	}
+
+	for _, tt := range tests {
+		var pt PortType
+		err := yaml.Unmarshal([]byte(tt.RawPortType), &pt)
+		if err != nil {
+			if tt.Succeed {
+				t.Errorf("Failed to unmarshal port type %q: %s", tt.RawPortType, err)
+			}
+			continue
+		}
+
+		if !tt.Succeed {
+			t.Errorf("Expected port type %#v to fail!", tt.RawPortType)
+			continue
+		}
+
+		if object.PortType(pt) != tt.PortType {
+			t.Errorf("Expected port type %#v, got %#v", tt.PortType, pt)
+			continue
+		}
+	}
+}
+
 func TestEnvVariable_UnmarshalYAML(t *testing.T) {
 	tests := []struct {
 		Succeed   bool
@@ -152,6 +194,7 @@ volumes:
 											ContainerPort: 5000,
 											ServicePort:   80,
 										},
+										Type: object.PortType_Internal,
 									},
 									{
 										Port: object.PortMapping{
@@ -169,6 +212,74 @@ volumes:
 						Name: "data",
 						Size: "1Gi",
 						Mode: "ReadWriteOnce",
+					},
+				},
+			},
+		},
+		{
+			true, `
+version: 0.1-dev
+services:
+- name: helloworld
+  containers:
+  - image: tomaskral/nonroot-nginx
+    ports:
+    - port: 8080
+      type: external
+`,
+			&object.OpenCompose{
+				Version: Version,
+				Services: []object.Service{
+					{
+						Name: "helloworld",
+						Containers: []object.Container{
+							{
+								Image: "tomaskral/nonroot-nginx",
+								Ports: []object.Port{
+									{
+										Port: object.PortMapping{
+											ContainerPort: 8080,
+											ServicePort:   8080,
+										},
+										Type: object.PortType_External,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			true, `
+version: 0.1-dev
+services:
+- name: helloworld
+  containers:
+  - image: tomaskral/nonroot-nginx
+    ports:
+    - port: 8080
+      type: internal
+`,
+			&object.OpenCompose{
+				Version: Version,
+				Services: []object.Service{
+					{
+						Name: "helloworld",
+						Containers: []object.Container{
+							{
+								Image: "tomaskral/nonroot-nginx",
+								Ports: []object.Port{
+									{
+										Port: object.PortMapping{
+											ContainerPort: 8080,
+											ServicePort:   8080,
+										},
+										Type: object.PortType_Internal,
+									},
+								},
+							},
+						},
 					},
 				},
 			},
