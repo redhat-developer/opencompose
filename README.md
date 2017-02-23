@@ -42,10 +42,21 @@ First file is a Kubernetes Deployment object and second is a Kubernetes Service.
 To deploy your application to Kubernetes cluster just run `kubectl create -f service-helloworld.yaml -f deployment-helloworld.yaml`
 
 
-### Bash Completion
-If you prefer bash auto completion, you need run the following :
+### Command-line Completions
+#### Bash
+For Bash auto completion run the following command:
 
-```sh
+```bash
 source <(opencompose completion bash)
 ```
 
+To make it permanent add this line to your `~/.bashrc`.
+
+#### Zsh
+For Zsh auto completion run the following command:
+
+```zsh
+source <(opencompose completion zsh)
+```
+
+To make it permanent add this line to your `~/.zshrc`.
