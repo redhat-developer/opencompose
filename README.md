@@ -16,7 +16,7 @@ Please send PRs to improve this project, file issues and RFEs against this repos
 We don't have a release yet, but you can easily build OpenCompose tool from source.
 All you need is [Go installed](https://golang.org/dl/) on your system. Than simply run:
 ```sh
-go get -u https://github.com/redhat-developer/opencompose
+go get -u github.com/redhat-developer/opencompose
 ```
 
 ### Example
