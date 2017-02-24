@@ -5,8 +5,16 @@ type PortMapping struct {
 	ServicePort   int
 }
 
+type PortType int
+
+const (
+	PortType_Internal PortType = iota
+	PortType_External
+)
+
 type Port struct {
 	Port PortMapping
+	Type PortType
 }
 
 type EnvVariable struct {
