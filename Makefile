@@ -4,20 +4,28 @@ all: build
 
 SHELL :=/bin/bash
 
+GIT_VERSION =$(shell git describe --tags --abbrev=0 2>/dev/null)
+GIT_EXACT_VERSION =$(shell git describe --tags --abbrev=0 --exact-match 2>/dev/null)
+GIT_COMMIT =$(shell git rev-parse --short HEAD 2>/dev/null)
+GIT_TREE_STATE =$(shell (test -z "$$(git status --porcelain 2>/dev/null)" && echo clean) || echo dirty)
+
 GOFMT :=gofmt -s
 GOIMPORTS :=goimports -e
 
+GO_IMPORT_PATH :=github.com/redhat-developer/opencompose
 GO_FILES :=$(shell find . -name '*.go' -not -path './vendor/*' -print)
-GO_PACKAGES = $(shell glide novendor)
-
+GO_PACKAGES =$(shell glide novendor)
+ifneq ($(and $(GIT_VERSION),$(GIT_COMMIT),$(GIT_TREE_STATE)),)
+GO_LDFLAGS =-ldflags="-X $(GO_IMPORT_PATH)/pkg/version.gitVersion=$(GIT_VERSION) -X $(GO_IMPORT_PATH)/pkg/version.gitCommit=$(GIT_COMMIT) -X $(GO_IMPORT_PATH)/pkg/version.gitTreeState=$(GIT_TREE_STATE)"
+endif
 
 .PHONY: build
 build:
-	go build
+	go build $(GO_LDFLAGS)
 
 .PHONY: install
 install:
-	go install
+	go install $(GO_LDFLAGS)
 
 .PHONY: test
 test:
@@ -73,3 +81,10 @@ update-vendor:
 .PHONY: strip-vendor
 strip-vendor:
 	$(do-strip-vendor)
+
+.PHONY: release
+release: build
+ifeq ($(and $(GIT_EXACT_VERSION),$(GIT_COMMIT)),)
+	$(error GIT_EXACT_VERSION or GIT_COMMIT is not set or this is not a tagged commit)
+endif
+	tar -cJf opencompose-$(GIT_EXACT_VERSION)-$(GIT_COMMIT)-linux-64bit.tar.xz ./opencompose ./LICENSE ./README.md

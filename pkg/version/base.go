@@ -17,6 +17,6 @@ package version
 var (
 	// semantic version
 	gitVersion   string = "v0.0.0"
-	gitCommit    string = "00000000000000000000" // sha1 from git, output of $(git rev-parse HEAD)
-	gitTreeState string = "not a git tree"       // state of git tree, either "clean" or "dirty"
+	gitCommit    string = "000000"         // sha1 from git, output of $(git rev-parse HEAD)
+	gitTreeState string = "not_a_git_tree" // state of git tree, either "clean" or "dirty"
 )
