@@ -13,10 +13,19 @@ but we are definitely looking for suggestions and contributions from the Kuberne
 Please send PRs to improve this project, file issues and RFEs against this repository.
 
 ### Installation
-We don't have a release yet, but you can easily build OpenCompose tool from source.
-All you need is [Go installed](https://golang.org/dl/) on your system. Than simply run:
+#### From source
+You can easily build OpenCompose tool from source. All you need is [Go installed](https://golang.org/dl/) on your system. Than simply run:
 ```sh
 go get -u github.com/redhat-developer/opencompose
+```
+
+#### Binaries
+You can get binaries for Linux, Mac OS and Windows on our [GitHub Release Page](https://github.com/redhat-developer/opencompose/releases).
+
+##### Linux
+If you prefer to do it straight from CLI here is a one-liner for you:
+```bash
+curl -L https://github.com/redhat-developer/opencompose/releases/download/v0.1.0-alpha.0/opencompose-v0.1.0-alpha.0-d0edfd9-linux-64bit.tar.xz | tar -xJf - -C ${HOME}/bin ./opencompose
 ```
 
 ### Example
