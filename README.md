@@ -2,34 +2,36 @@
 
 [![Build Status](https://travis-ci.org/redhat-developer/opencompose.svg?branch=master)](https://travis-ci.org/redhat-developer/opencompose)
 
-The goal of OpenCompose is to make it easier to on-board developers to Kubernetes.
-It is a curated higher level abstraction for specific Kubernetes resources.
-Very simple idea, isn't it? Developer shouldn't have to learn various Kubernetes concepts just to test and deploy their applications on Kubernetes.
-The developer is generally concerned with the application that is being developed.
+The goal of OpenCompose is to make it easier for developers to on-board to Kubernetes.
+OpenCompose is a declarative higher level abstraction for specific Kubernetes resources.
 
-We are at a very nascent stage of this project and we have listed some of our ideas as [issues](https://github.com/redhat-developer/opencompose/issues)
-and some of our ideas have taken shape in form of [examples](https://github.com/redhat-developer/opencompose/blob/master/examples/) 
-but we are definitely looking for suggestions and contributions from the Kubernetes community.
-Please send PRs to improve this project, file issues and RFEs against this repository.
+Very simple idea, isn't it? 
+A developer shouldn't have to learn various Kubernetes concepts just to test and deploy their applications.
+Focus on the application that is being developed.
+
+We are at a very evolving stage of this project and we have listed some of our ideas as [issues](https://github.com/redhat-developer/opencompose/issues)
+and [examples](https://github.com/redhat-developer/opencompose/blob/master/examples/).
+We are open to suggestions and contributions from the Kubernetes community as our project grows.
+Please send any PRs, issues or RFCs to improve this project.
 
 ### Installation
 #### From source
-You can easily build OpenCompose tool from source. All you need is [Go installed](https://golang.org/dl/) on your system. Than simply run:
+You can easily build OpenCompose tool from source. All you need is [Go](https://golang.org/dl/):
 ```sh
 go get -u github.com/redhat-developer/opencompose
 ```
 
 #### Binaries
-You can get binaries for Linux, Mac OS and Windows on our [GitHub Release Page](https://github.com/redhat-developer/opencompose/releases).
+You can retrieve binaries for Linux, macOS and Windows on our [GitHub release page](https://github.com/redhat-developer/opencompose/releases).
 
 ##### Linux
-If you prefer to do it straight from CLI here is a one-liner for you:
+If you prefer to do it straight from CLI here's a one-liner for you:
 ```bash
 curl -L https://github.com/redhat-developer/opencompose/releases/download/v0.1.0-alpha.0/opencompose-v0.1.0-alpha.0-d0edfd9-linux-64bit.tar.xz | tar -xJf - -C ${HOME}/bin ./opencompose
 ```
 
 ### Example
-1) Create or download [hello-nginx.yaml](https://github.com/redhat-developer/opencompose/blob/master/examples/hello-nginx.yaml) file.
+1) Create or download [hello-nginx.yaml](https://github.com/redhat-developer/opencompose/blob/master/examples/hello-nginx.yaml).
 
 ```yaml
 version: 0.1-dev
@@ -42,13 +44,18 @@ services:
 ```
 
 2) Convert OpenCompose file to Kubernetes objects
+
 ```sh
 opencompose convert -f hello-nginx.yaml
 ```
-This will create two files in current directory - *deployment-helloworld.yaml* and *service-helloworld.yaml*.
-First file is a Kubernetes Deployment object and second is a Kubernetes Service.
 
-To deploy your application to Kubernetes cluster just run `kubectl create -f service-helloworld.yaml -f deployment-helloworld.yaml`
+This will create two Kubernetes files in current directory - `deployment-helloworld.yaml` and `service-helloworld.yaml`.
+
+To deploy your application to Kubernetes run:
+
+```sh
+kubectl create -f service-helloworld.yaml -f deployment-helloworld.yaml
+```
 
 
 ### Command-line Completions
