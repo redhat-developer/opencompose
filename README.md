@@ -69,3 +69,7 @@ source <(opencompose completion zsh)
 ```
 
 To make it permanent add this line to your `~/.zshrc`.
+
+### Documentation
+ - [OpenCompose file reference documentation](https://github.com/redhat-developer/opencompose/blob/master/docs/file-reference.md)
+ - You can find more in [doc/](https://github.com/redhat-developer/opencompose/tree/master/docs) folder
