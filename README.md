@@ -15,12 +15,6 @@ We are open to suggestions and contributions from the Kubernetes community as ou
 Please send any PRs, issues or RFCs to improve this project.
 
 ### Installation
-#### From source
-You can easily build OpenCompose tool from source. All you need is [Go](https://golang.org/dl/):
-```sh
-go get -u github.com/redhat-developer/opencompose
-```
-
 #### Binaries
 You can retrieve binaries for Linux, macOS and Windows on our [GitHub release page](https://github.com/redhat-developer/opencompose/releases).
 
@@ -29,6 +23,18 @@ If you prefer to do it straight from CLI here's a one-liner for you:
 ```bash
 curl -L https://github.com/redhat-developer/opencompose/releases/download/v0.1.0-alpha.0/opencompose-v0.1.0-alpha.0-d0edfd9-linux-64bit.tar.xz | tar -xJf - -C ${HOME}/bin ./opencompose
 ```
+#### From source
+You can easily build OpenCompose tool from source. All you need is [Go](https://golang.org/dl/):
+```sh
+go get -u github.com/redhat-developer/opencompose
+```
+
+Although `go get` installation works for just trying it out, if you want to submit bug reports you have to build it the supported way:
+```bash
+go get -u -d github.com/redhat-developer/opencompose
+make install -C $GOPATH/src/github.com/redhat-developer/opencompose/
+```
+This will ensure proper output of `opencompose version`.
 
 ### Example
 1) Create or download [hello-nginx.yaml](https://github.com/redhat-developer/opencompose/blob/master/examples/hello-nginx.yaml).
