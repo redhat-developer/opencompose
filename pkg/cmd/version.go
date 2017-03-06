@@ -11,8 +11,8 @@ import (
 
 var (
 	versionExample = `
-		# Print version information
-		kubectl version`
+  # Print version information
+  kubectl version`
 )
 
 func NewCmdVersion(v *viper.Viper, out, outerr io.Writer) *cobra.Command {
