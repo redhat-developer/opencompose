@@ -90,3 +90,6 @@ To make it permanent add this line to your `~/.zshrc`.
 ### Documentation
  - [OpenCompose file reference documentation](https://github.com/redhat-developer/opencompose/blob/master/docs/file-reference.md)
  - You can find more in [doc/](https://github.com/redhat-developer/opencompose/tree/master/docs) folder
+
+### Community
+We always welcome your feedback and thoughts on the project! Come and join our mailing list - [opencompose [at] googlegroups.com](https://groups.google.com/forum/#!forum/opencompose). We also hangout on [slack.k8s.io](http://slack.k8s.io/) ([#sig-apps](https://kubernetes.slack.com/messages/sig-apps/)).
