@@ -10,8 +10,8 @@ import (
 
 var (
 	validateExample = `
-		# Print validate information
-		opencompose validate`
+  # Print validate information
+  opencompose validate`
 )
 
 func NewCmdValidate(v *viper.Viper, out, outerr io.Writer) *cobra.Command {
