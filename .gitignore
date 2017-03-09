@@ -1,2 +1,35 @@
+#
+# OpenCompose specific
+#
+
 opencompose
 opencompose*.tar.xz
+
+
+#
+# GO SPECIFIC
+#
+
+# Compiled Object files, Static and Dynamic libs (Shared Objects)
+*.o
+*.a
+*.so
+
+#
+# VIM SPECIFIC
+#
+
+# swap
+[._]*.s[a-w][a-z]
+[._]s[a-w][a-z]
+
+# session
+Session.vim
+
+# temporary
+.netrwhist
+*~
+
+# IntelliJ IDE specific
+.idea
+
