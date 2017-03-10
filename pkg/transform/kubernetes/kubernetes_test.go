@@ -1,6 +1,7 @@
 package kubernetes
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -571,6 +572,124 @@ func TestTransformer_CreateIngresses(t *testing.T) {
 
 			if !reflect.DeepEqual(ks, tt.KubernetesIngresses) {
 				t.Fatal(spew.Errorf("Expected:\n%#+v\n, got:\n%#+v", tt.KubernetesIngresses, ks))
+			}
+		})
+	}
+}
+
+func TestTransformer_CreateDeployments(t *testing.T) {
+	name := "test"
+	podname := fmt.Sprintf("%s-%d", name, 0)
+	image := "docker.io/test"
+	sMeta := api_v1.ObjectMeta{
+		Name: name,
+		Labels: map[string]string{
+			"service": name,
+		},
+	}
+	strategy := ext_v1beta1.DeploymentStrategy{
+		Type: ext_v1beta1.RollingUpdateDeploymentStrategyType,
+	}
+
+	tests := []struct {
+		Name           string
+		Succeed        bool
+		Service        *object.Service
+		K8sDeployments []runtime.Object
+	}{
+		{
+			"When no replica field given",
+			true,
+			&object.Service{
+				Name: name,
+				Containers: []object.Container{
+					{
+						Image: image,
+					},
+				},
+			},
+			[]runtime.Object{
+				&ext_v1beta1.Deployment{
+					ObjectMeta: sMeta,
+					Spec: ext_v1beta1.DeploymentSpec{
+						Strategy: strategy,
+						Template: api_v1.PodTemplateSpec{
+							ObjectMeta: api_v1.ObjectMeta{
+								Labels: map[string]string{
+									"service": name,
+								},
+							},
+							Spec: api_v1.PodSpec{
+								Containers: []api_v1.Container{
+									{
+										Name:  podname,
+										Image: image,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			"When valid replica value given",
+			true,
+			&object.Service{
+				Name:     name,
+				Replicas: goutil.Int32Addr(1),
+				Containers: []object.Container{
+					{
+						Image: image,
+					},
+				},
+			},
+			[]runtime.Object{
+				&ext_v1beta1.Deployment{
+					ObjectMeta: sMeta,
+					Spec: ext_v1beta1.DeploymentSpec{
+						Strategy: strategy,
+						Replicas: goutil.Int32Addr(1),
+						Template: api_v1.PodTemplateSpec{
+							ObjectMeta: api_v1.ObjectMeta{
+								Labels: map[string]string{
+									"service": name,
+								},
+							},
+							Spec: api_v1.PodSpec{
+								Containers: []api_v1.Container{
+									{
+										Name:  podname,
+										Image: image,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	transformer := Transformer{}
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+			kd, err := transformer.CreateDeployments(test.Service)
+			if err != nil {
+				if test.Succeed {
+					t.Errorf("Failed to create deployment from %#v\nErr: %s", test.Service, err)
+				}
+				return
+			}
+
+			if !test.Succeed {
+				t.Errorf("Expected failure, but succeeded, service: %#v\nConverted k8s Deployment: %#v", test.Service, kd[0])
+				return
+			}
+
+			if !reflect.DeepEqual(kd, test.K8sDeployments) {
+				t.Errorf("Expected: %#v\nGot: %#v\n", test.K8sDeployments, kd)
+				return
 			}
 		})
 	}

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+
 	"github.com/redhat-developer/opencompose/pkg/goutil"
 	"github.com/redhat-developer/opencompose/pkg/object"
 	"gopkg.in/yaml.v2"
@@ -264,9 +265,88 @@ func TestEnvVariable_UnmarshalYAML(t *testing.T) {
 	}
 }
 
+func TestService_UnmarshalYAML(t *testing.T) {
+
+	tests := []struct {
+		Name       string
+		Succeed    bool
+		RawService string
+		Service    *Service
+	}{
+		{
+			"Replica as positive int",
+			true, `
+name: frontend
+replicas: 3
+containers:
+- image: tomaskral/kompose-demo-frontend:test
+`,
+			&Service{
+				Name:     "frontend",
+				Replicas: goutil.Int32Addr(3),
+				Containers: []Container{
+					{
+						Image: "tomaskral/kompose-demo-frontend:test",
+					},
+				},
+			},
+		},
+
+		{
+			"Replica as 'string'",
+			false, `
+name: frontend
+replicas: notint
+containers:
+- image: tomaskral/kompose-demo-frontend:test
+`,
+			nil,
+		},
+
+		{
+			"Not giving any replica value it's an optional field",
+			true, `
+name: frontend
+containers:
+- image: tomaskral/kompose-demo-frontend:test
+`,
+			&Service{
+				Name: "frontend",
+				Containers: []Container{
+					{
+						Image: "tomaskral/kompose-demo-frontend:test",
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+			var service Service
+			err := yaml.Unmarshal([]byte(test.RawService), &service)
+			if err != nil {
+				if test.Succeed {
+					t.Errorf("Failed to unmarshal: %#v\nError: %#v", test.RawService, err)
+				}
+				return
+			}
+
+			if !test.Succeed {
+				t.Fatalf("Expected %#v to fail, but succeeded!", test.RawService)
+			}
+
+			if !reflect.DeepEqual(service, *test.Service) {
+				t.Fatalf("Expected %#v\ngot %#v", *test.Service, service)
+			}
+		})
+	}
+}
+
 func TestDecoder_Decode(t *testing.T) {
 	// TODO: make better tests w.r.t excess keys in all possible places
 	// TODO: add checking for proper error because tests can fail for other than expected reasons
+
 	tests := []struct {
 		Succeed     bool
 		File        string
@@ -553,6 +633,30 @@ volumes: []
 			false,
 			"",
 			nil,
+		},
+		{
+			true, `
+version: 0.1-dev
+services:
+- name: helloworld
+  replicas: 2
+  containers:
+  - image: tomaskral/nonroot-nginx
+`,
+			&object.OpenCompose{
+				Version: Version,
+				Services: []object.Service{
+					{
+						Name:     "helloworld",
+						Replicas: goutil.Int32Addr(2),
+						Containers: []object.Container{
+							{
+								Image: "tomaskral/nonroot-nginx",
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 

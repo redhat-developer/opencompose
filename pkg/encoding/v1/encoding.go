@@ -208,6 +208,7 @@ func (c *Container) UnmarshalYAML(unmarshal func(interface{}) error) error {
 type Service struct {
 	Name       ResourceName `yaml:"name"`
 	Containers []Container  `yaml:"containers"`
+	Replicas   *int32       `yaml:"replicas,omitempty"`
 }
 
 func (s *Service) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -342,6 +343,8 @@ func (d *Decoder) Decode(data []byte) (*object.OpenCompose, error) {
 		os := object.Service{
 			Name: string(s.Name),
 		}
+
+		os.Replicas = s.Replicas
 
 		// convert containers
 		for _, c := range s.Containers {
