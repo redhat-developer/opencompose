@@ -75,7 +75,7 @@ func GetValidatedObject(v *viper.Viper, cmd *cobra.Command, out, outerr io.Write
 
 		o, err := decoder.Decode(data)
 		if err != nil {
-			return nil, fmt.Errorf("could not unmarsha data for file '%s': %s", file, err)
+			return nil, fmt.Errorf("could not unmarshal data for file '%s': %s", file, err)
 		}
 
 		ocObjects = append(ocObjects, o)
