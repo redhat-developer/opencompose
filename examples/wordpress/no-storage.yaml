@@ -22,3 +22,4 @@ services:
     - WORDPRESS_DB_NAME=wordpress
     ports:
     - port: 80
+      type: external
