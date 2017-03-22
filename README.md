@@ -59,12 +59,12 @@ services:
 opencompose convert -f hello-nginx.yaml
 ```
 
-This will create two Kubernetes files in current directory - `deployment-helloworld.yaml` and `service-helloworld.yaml`.
+This will create two Kubernetes files in current directory - `helloworld-deployment.yaml` and `helloworld-service.yaml`.
 
 To deploy your application to Kubernetes run:
 
 ```sh
-kubectl create -f service-helloworld.yaml -f deployment-helloworld.yaml
+kubectl create -f helloworld-service.yaml -f helloworld-deployment.yaml
 ```
 
 
