@@ -77,6 +77,67 @@ func (t *Transformer) CreateServices(o *object.Service) ([]runtime.Object, error
 	return result, nil
 }
 
+// Create k8s ingresses for OpenCompose service
+func (t *Transformer) CreateIngresses(o *object.Service) ([]runtime.Object, error) {
+	result := []runtime.Object{}
+
+	i := &ext_v1beta1.Ingress{
+		ObjectMeta: api_v1.ObjectMeta{
+			Name: o.Name,
+			Labels: map[string]string{
+				"service": o.Name,
+			},
+		},
+	}
+
+	for _, c := range o.Containers {
+		// We don't want to generate ingress if there are no ports to be mapped
+		if len(c.Ports) == 0 {
+			continue
+		}
+
+		for _, p := range c.Ports {
+			if p.Host == nil {
+				// Not Ingress
+				continue
+			}
+
+			host := *p.Host
+			var rule *ext_v1beta1.IngressRule
+			for idx := range i.Spec.Rules {
+				r := &i.Spec.Rules[idx]
+				if r.Host == host {
+					rule = r
+					break
+				}
+			}
+			if rule == nil {
+				rule = &ext_v1beta1.IngressRule{
+					Host: host,
+					IngressRuleValue: ext_v1beta1.IngressRuleValue{
+						HTTP: &ext_v1beta1.HTTPIngressRuleValue{},
+					},
+				}
+				i.Spec.Rules = append(i.Spec.Rules, *rule)
+			}
+
+			rule.HTTP.Paths = append(rule.HTTP.Paths, ext_v1beta1.HTTPIngressPath{
+				Path: p.Path,
+				Backend: ext_v1beta1.IngressBackend{
+					ServiceName: o.Name,
+					ServicePort: intstr.FromInt(p.Port.ServicePort),
+				},
+			})
+		}
+	}
+
+	if len(i.Spec.Rules) > 0 {
+		result = append(result, i)
+	}
+
+	return result, nil
+}
+
 // Create k8s deployments for OpenCompose service
 func (t *Transformer) CreateDeployments(o *object.Service) ([]runtime.Object, error) {
 	result := []runtime.Object{}
@@ -141,14 +202,21 @@ func (t *Transformer) TransformServices(services []object.Service) ([]runtime.Ob
 		// create k8s services
 		objects, err := t.CreateServices(&service)
 		if err != nil {
-			return nil, fmt.Errorf("failed to transform service: %s", err)
+			return nil, fmt.Errorf("failed to generate services: %s", err)
+		}
+		result = append(result, objects...)
+
+		// create k8s ingresses
+		objects, err = t.CreateIngresses(&service)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate ingresses: %s", err)
 		}
 		result = append(result, objects...)
 
 		// create k8s deployments
 		objects, err = t.CreateDeployments(&service)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create deployments: %s", err)
+			return nil, fmt.Errorf("failed to generate deployments: %s", err)
 		}
 		result = append(result, objects...)
 	}

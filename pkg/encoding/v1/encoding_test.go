@@ -4,9 +4,19 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
+	"github.com/redhat-developer/opencompose/pkg/goutil"
 	"github.com/redhat-developer/opencompose/pkg/object"
 	"gopkg.in/yaml.v2"
 )
+
+func UriAddrFromString(s string) *Fqdn {
+	return (*Fqdn)(&s)
+}
+
+func UriPathAddrFromString(s string) *PathRegex {
+	return (*PathRegex)(&s)
+}
 
 func TestPortMapping_UnmarshalYAML(t *testing.T) {
 	tests := []struct {
@@ -102,6 +112,116 @@ func TestPortType_UnmarshalYAML(t *testing.T) {
 			t.Errorf("Expected port type %#v, got %#v", tt.PortType, pt)
 			continue
 		}
+	}
+}
+
+func TestPort_UnmarshalYAML(t *testing.T) {
+	tests := []struct {
+		Succeed bool
+		RawPort string
+		Port    Port
+	}{
+		{true, "", Port{}}, // UnmarshalYAML won't be even called for empty strings -> default value
+		{
+			true,
+			`
+port: 5000:80
+host: ""
+`,
+			Port{
+				Port: PortMapping{ContainerPort: 5000, ServicePort: 80},
+				Host: UriAddrFromString(""),
+				Path: UriPathAddrFromString(""), // path defaults to "" when host is validated/set
+			},
+		},
+		{
+			true,
+			`
+port: 5000:80
+host: "subdomain.127.0.0.1.nip.io"
+`,
+			Port{
+				Port: PortMapping{ContainerPort: 5000, ServicePort: 80},
+				Host: UriAddrFromString("subdomain.127.0.0.1.nip.io"),
+				Path: UriPathAddrFromString(""), // path defaults to "" when host is validated/set
+			},
+		},
+		{
+			false, //you have to specify host
+			`
+port: 5000:80
+path: "/admin"
+`,
+			Port{},
+		},
+		{
+			false, //you have to specify host
+			`
+port: 5000:80
+path: ""
+`,
+			Port{},
+		},
+		{
+			true,
+			`
+port: 5000:80
+host: ""
+path: ""
+`,
+			Port{
+				Port: PortMapping{ContainerPort: 5000, ServicePort: 80},
+				Host: UriAddrFromString(""),
+				Path: UriPathAddrFromString(""),
+			},
+		},
+		{
+			true,
+			`
+port: 5000:80
+host: ""
+path: "/admin"
+`,
+			Port{
+				Port: PortMapping{ContainerPort: 5000, ServicePort: 80},
+				Host: UriAddrFromString(""),
+				Path: UriPathAddrFromString("/admin"),
+			},
+		},
+		{
+			true,
+			`
+port: 5000:80
+host: "subdomain.127.0.0.1.nip.io"
+path: "/admin"
+`,
+			Port{
+				Port: PortMapping{ContainerPort: 5000, ServicePort: 80},
+				Host: UriAddrFromString("subdomain.127.0.0.1.nip.io"),
+				Path: UriPathAddrFromString("/admin"),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			var p Port
+			err := yaml.Unmarshal([]byte(tt.RawPort), &p)
+			if err != nil {
+				if tt.Succeed {
+					t.Fatalf("Failed to unmarshal port %q: %s", tt.RawPort, err)
+				}
+				return
+			}
+
+			if !tt.Succeed {
+				t.Fatal(spew.Errorf("Expected port %#+v to fail!", tt.RawPort))
+			}
+
+			if !reflect.DeepEqual(p, tt.Port) {
+				t.Fatal(spew.Errorf("Expected:\n%#+v\n, got:\n%#+v", tt.Port, p))
+			}
+		})
 	}
 }
 
@@ -285,6 +405,43 @@ services:
 			},
 		},
 		{
+			true, `
+version: 0.1-dev
+services:
+- name: helloworld
+  containers:
+  - image: tomaskral/nonroot-nginx
+    ports:
+    - port: 8080
+      host: hw-nginx.127.0.0.1.nip.io
+      path: /admin
+`,
+			&object.OpenCompose{
+				Version: Version,
+				Services: []object.Service{
+					{
+						Name: "helloworld",
+						Containers: []object.Container{
+							{
+								Image: "tomaskral/nonroot-nginx",
+								Ports: []object.Port{
+									{
+										Port: object.PortMapping{
+											ContainerPort: 8080,
+											ServicePort:   8080,
+										},
+										Type: object.PortType_Internal,
+										Host: goutil.StringAddr("hw-nginx.127.0.0.1.nip.io"),
+										Path: "/admin",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
 			false, `
 version: 0.1-dev
 services:
@@ -400,24 +557,23 @@ volumes: []
 	}
 
 	for _, tt := range tests {
-		data := []byte(tt.File)
-		openCompose, err := (&Decoder{}).Decode(data)
-		if err != nil {
-			if tt.Succeed {
-				t.Errorf("Failed to unmarshal %#v; error %#v", tt.File, err)
+		t.Run("", func(t *testing.T) {
+			data := []byte(tt.File)
+			openCompose, err := (&Decoder{}).Decode(data)
+			if err != nil {
+				if tt.Succeed {
+					t.Fatalf("Failed to unmarshal %#v; error %#v", tt.File, err)
+				}
+				return
 			}
-			continue
-		}
 
-		if !tt.Succeed {
-			t.Errorf("Expected %#v to fail!", tt.File)
-			continue
-		}
+			if !tt.Succeed {
+				t.Fatal(spew.Errorf("Expected %#+v to fail!", tt.File))
+			}
 
-		if !reflect.DeepEqual(openCompose, tt.OpenCompose) {
-			t.Errorf("Expected: %#v; got: %#v", tt.OpenCompose, openCompose)
-			continue
-		}
+			if !reflect.DeepEqual(openCompose, tt.OpenCompose) {
+				t.Fatal(spew.Errorf("Expected:\n%#+v\n, got:\n%#+v", tt.OpenCompose, openCompose))
+			}
+		})
 	}
-
 }

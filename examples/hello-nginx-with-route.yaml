@@ -1,0 +1,8 @@
+version: 0.1-dev
+services:
+- name: helloworld
+  containers:
+  - image: tomaskral/nonroot-nginx
+    ports:
+    - port: 8080
+      host: hw-nginx.127.0.0.1.nip.io

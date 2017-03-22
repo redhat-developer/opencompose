@@ -1,11 +1,13 @@
 package v1
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/redhat-developer/opencompose/pkg/encoding/util"
+	"github.com/redhat-developer/opencompose/pkg/goutil"
 	"github.com/redhat-developer/opencompose/pkg/object"
 	"gopkg.in/yaml.v2"
 )
@@ -98,9 +100,21 @@ func (pt *PortType) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
+// Fully qualified domain name as defined by RFC 3986
+type Fqdn string
+
+// TODO: Add Fqdn unmarshalling to validate it
+
+// An extended POSIX regex as defined by IEEE Std 1003.1, (i.e this follows the egrep/unix syntax, not the perl syntax)
+type PathRegex string
+
+// TODO: Add PathRegex unmarshalling to validate it
+
 type Port struct {
 	Port PortMapping `yaml:"port"`
 	Type PortType    `yaml:"type,omitempty"`
+	Host *Fqdn       `yaml:"host,omitempty"`
+	Path *PathRegex  `yaml:"path,omitempty"`
 }
 
 func (v *Port) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -119,6 +133,16 @@ func (v *Port) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	*v = Port(st.PortAlias)
+
+	// Setting "path" requires specifying "host"
+	if v.Host == nil && v.Path != nil {
+		return errors.New("failed to unmarshal port: 'host' not specified: setting 'path' requires specifying 'host'")
+	}
+
+	// If there is no path specified it implies ""
+	if v.Host != nil && v.Path == nil {
+		v.Path = new(PathRegex)
+	}
 
 	return nil
 }
@@ -333,6 +357,8 @@ func (d *Decoder) Decode(data []byte) (*object.OpenCompose, error) {
 						ServicePort:   p.Port.ServicePort,
 					},
 					Type: object.PortType(p.Type),
+					Host: (*string)(p.Host),
+					Path: goutil.StringOrEmpty((*string)(p.Path)),
 				})
 			}
 
