@@ -133,7 +133,7 @@ func RunConvert(v *viper.Viper, cmd *cobra.Command, out, outerr io.Writer) error
 				return fmt.Errorf("failed to cast runtime.object to meta.object (type is %s): %s", reflect.TypeOf(o).String(), err)
 			}
 
-			filename := fmt.Sprintf("%s-%s.yaml", strings.ToLower(kind), m.GetName())
+			filename := fmt.Sprintf("%s-%s.yaml", m.GetName(), strings.ToLower(kind))
 			return ioutil.WriteFile(path.Join(outputDir, filename), data, 0644)
 		}
 	}
