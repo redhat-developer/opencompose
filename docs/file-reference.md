@@ -8,6 +8,8 @@ version: "0.1-dev"
 services:
 - name: foobar
   replicas: 3
+  labels:
+    foo_label: bar_label
   containers:
   - image: foo/bar:tag
     env:
@@ -57,6 +59,8 @@ Each service has name and list of the containers, while `replicas` can be option
 # <ServiceSpec>
   name: foo
   replicas: 4
+  labels:
+    foo_label: bar_label
   containers:
   - <ContainerSpec>
   emptyDirVolumes:
@@ -76,6 +80,13 @@ Name of the service.
 | integer |    no    |
 
 Number of desired pods of this particluar service. This is an optional field. The valid value can only be a positive number.
+
+#### labels
+| type    | required |
+|---------|----------|
+| map with string keys and string values |    no    |
+
+Desired labels to be applied to the resulting Kubernetes objects from the service.
 
 ### containers
 | type                                    | required |

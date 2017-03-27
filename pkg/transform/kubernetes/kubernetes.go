@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/redhat-developer/opencompose/pkg/object"
+	"github.com/redhat-developer/opencompose/pkg/util"
 	_ "k8s.io/client-go/pkg/api/install"
 	"k8s.io/client-go/pkg/api/resource"
 	api_v1 "k8s.io/client-go/pkg/api/v1"
@@ -20,12 +21,18 @@ func (t *Transformer) CreateServices(o *object.Service) ([]runtime.Object, error
 	result := []runtime.Object{}
 
 	Service := func() *api_v1.Service {
+		serviceLabels := map[string]string(o.Labels)
 		return &api_v1.Service{
 			ObjectMeta: api_v1.ObjectMeta{
 				Name: o.Name,
-				Labels: map[string]string{
-					"service": o.Name,
-				},
+				Labels: *util.MergeMaps(
+					// The map containing `"service": o.Name` should always be
+					// passed later to avoid being overridden by util.MergeMaps()
+					&serviceLabels,
+					&map[string]string{
+						"service": o.Name,
+					},
+				),
 			},
 			Spec: api_v1.ServiceSpec{
 				Selector: map[string]string{
@@ -81,13 +88,19 @@ func (t *Transformer) CreateServices(o *object.Service) ([]runtime.Object, error
 // Create k8s ingresses for OpenCompose service
 func (t *Transformer) CreateIngresses(o *object.Service) ([]runtime.Object, error) {
 	result := []runtime.Object{}
+	serviceLabels := map[string]string(o.Labels)
 
 	i := &ext_v1beta1.Ingress{
 		ObjectMeta: api_v1.ObjectMeta{
 			Name: o.Name,
-			Labels: map[string]string{
-				"service": o.Name,
-			},
+			Labels: *util.MergeMaps(
+				// The map containing `"service": o.Name` should always be
+				// passed later to avoid being overridden by util.MergeMaps()
+				&serviceLabels,
+				&map[string]string{
+					"service": o.Name,
+				},
+			),
 		},
 	}
 
@@ -142,13 +155,19 @@ func (t *Transformer) CreateIngresses(o *object.Service) ([]runtime.Object, erro
 // Create k8s deployments for OpenCompose service
 func (t *Transformer) CreateDeployments(s *object.Service) ([]runtime.Object, error) {
 	result := []runtime.Object{}
+	serviceLabels := map[string]string(s.Labels)
 
 	d := &ext_v1beta1.Deployment{
 		ObjectMeta: api_v1.ObjectMeta{
 			Name: s.Name,
-			Labels: map[string]string{
-				"service": s.Name,
-			},
+			Labels: *util.MergeMaps(
+				// The map containing `"service": s.Name` should always be
+				// passed later to avoid being overridden by util.MergeMaps()
+				&serviceLabels,
+				&map[string]string{
+					"service": s.Name,
+				},
+			),
 		},
 		Spec: ext_v1beta1.DeploymentSpec{
 			Strategy: ext_v1beta1.DeploymentStrategy{
@@ -159,9 +178,14 @@ func (t *Transformer) CreateDeployments(s *object.Service) ([]runtime.Object, er
 			},
 			Template: api_v1.PodTemplateSpec{
 				ObjectMeta: api_v1.ObjectMeta{
-					Labels: map[string]string{
-						"service": s.Name,
-					},
+					Labels: *util.MergeMaps(
+						// The map containing `"service": s.Name` should always be
+						// passed later to avoid being overridden by util.MergeMaps()
+						&serviceLabels,
+						&map[string]string{
+							"service": s.Name,
+						},
+					),
 				},
 				Spec: api_v1.PodSpec{},
 			},

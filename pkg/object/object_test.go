@@ -385,6 +385,50 @@ func TestOpenCompose_Validate(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			"Valid labels",
+			true,
+			&OpenCompose{
+				Version: Version,
+				Services: []Service{
+					{
+						Name: name,
+						Containers: []Container{
+							{
+								Image: image,
+							},
+						},
+						Labels: Labels{
+							"key1": "value1",
+							"key2": "value2",
+						},
+					},
+				},
+			},
+		},
+
+		{
+			"Invalid label values",
+			false,
+			&OpenCompose{
+				Version: Version,
+				Services: []Service{
+					{
+						Name: name,
+						Containers: []Container{
+							{
+								Image: image,
+							},
+						},
+						Labels: Labels{
+							"key1": "garbage^value",
+							"key2": "value2",
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, test := range tests {

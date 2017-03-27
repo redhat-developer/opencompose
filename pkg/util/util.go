@@ -69,3 +69,16 @@ func FetchURLWithRetries(url string, attempts int, duration time.Duration) ([]by
 
 	return data, err
 }
+
+// MergeMaps will merge the given maps, but it does not check for conflicts.
+// In case of conflicting keys, the map that is provided later overrides the previous one.
+// TODO: add to docs about use with caution bits
+func MergeMaps(maps ...*map[string]string) *map[string]string {
+	mergedMap := make(map[string]string)
+	for _, m := range maps {
+		for k, v := range *m {
+			mergedMap[k] = v
+		}
+	}
+	return &mergedMap
+}

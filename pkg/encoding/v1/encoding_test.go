@@ -336,10 +336,7 @@ readOnly: true
 			&Mount{
 				VolumeName: "test-volume",
 				ReadOnly:   goutil.BoolAddr(true),
-			},
-		},
-	}
-
+			}}}
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
 			var mount Mount
@@ -399,6 +396,52 @@ excess: field
 				t.Fatalf("Expected %#v\ngot %#v", *test.EmptyDir, emptyDir)
 			}
 		})
+	}
+}
+
+func TestLabels_UnmarshalYAML(t *testing.T) {
+	tests := []struct {
+		name      string
+		Succeed   bool
+		RawLabels string
+		Labels    *Labels
+	}{
+		{
+			"Providing valid label strings",
+			true,
+			`
+key1: value1
+key2: value2
+key3:
+key4: value4
+`,
+			&Labels{
+				"key1": "value1",
+				"key2": "value2",
+				"key3": "",
+				"key4": "value4",
+			},
+		},
+	}
+	for _, tt := range tests {
+		var labels Labels
+		err := yaml.Unmarshal([]byte(tt.RawLabels), &labels)
+		if err != nil {
+			if tt.Succeed {
+				t.Errorf("Failed to unmarshal %#v; error %#v", tt.RawLabels, err)
+			}
+			continue
+		}
+
+		if !tt.Succeed {
+			t.Errorf("Expected %#v to fail!", tt.RawLabels)
+			continue
+		}
+
+		if !reflect.DeepEqual(labels, *tt.Labels) {
+			t.Errorf("Expected %#v, got %#v", *tt.Labels, labels)
+			continue
+		}
 	}
 }
 
@@ -978,6 +1021,42 @@ volumes:
   storageClass: fast
 `,
 			nil,
+		},
+		{
+			true,
+			`
+version: 0.1-dev
+services:
+- name: helloworld
+  replicas: 2
+  containers:
+  - image: tomaskral/nonroot-nginx
+  labels:
+      key1: value1
+      key2: value2
+      key3:
+      key4: value4
+`,
+			&object.OpenCompose{
+				Version: Version,
+				Services: []object.Service{
+					{
+						Name:     "helloworld",
+						Replicas: goutil.Int32Addr(2),
+						Containers: []object.Container{
+							{
+								Image: "tomaskral/nonroot-nginx",
+							},
+						},
+						Labels: object.Labels{
+							"key1": "value1",
+							"key2": "value2",
+							"key3": "",
+							"key4": "value4",
+						},
+					},
+				},
+			},
 		},
 	}
 
