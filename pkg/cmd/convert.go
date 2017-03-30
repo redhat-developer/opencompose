@@ -20,6 +20,7 @@ import (
 	"k8s.io/client-go/pkg/api"
 	"k8s.io/client-go/pkg/api/meta"
 	"k8s.io/client-go/pkg/runtime"
+	"os"
 )
 
 var (
@@ -62,12 +63,23 @@ func GetValidatedObject(v *viper.Viper, cmd *cobra.Command, out, outerr io.Write
 	}
 
 	var ocObjects []*object.OpenCompose
-	for _, file := range files {
-		data, err := ioutil.ReadFile(file)
-		if err != nil {
-			return nil, fmt.Errorf("unable to read file '%s': %s", file, err)
-		}
 
+	for _, file := range files {
+		var data []byte
+		var err error
+
+		// Check if the passed resource points to STDIN or not
+		if file == "-" {
+			data, err = ioutil.ReadAll(os.Stdin)
+			if err != nil {
+				return nil, fmt.Errorf("unable to read from stdin: %s", err)
+			}
+		} else {
+			data, err = ioutil.ReadFile(file)
+			if err != nil {
+				return nil, fmt.Errorf("unable to read file '%s': %s", file, err)
+			}
+		}
 		decoder, err := encoding.GetDecoderFor(data)
 		if err != nil {
 			return nil, fmt.Errorf("could not find decoder for file '%s': %s", file, err)
