@@ -265,8 +265,144 @@ func TestEnvVariable_UnmarshalYAML(t *testing.T) {
 	}
 }
 
-func TestService_UnmarshalYAML(t *testing.T) {
+func TestMount_UnmarshalYAML(t *testing.T) {
+	tests := []struct {
+		Name     string
+		Succeed  bool
+		RawMount string
+		Mount    *Mount
+	}{
+		{
+			"All fields given",
+			true, `
+volumeName: test-volume
+mountPath: /foo/bar
+volumeSubPath: some/path
+readOnly: true
+`,
+			&Mount{
+				VolumeName:    "test-volume",
+				MountPath:     "/foo/bar",
+				VolumeSubPath: goutil.StringAddr("some/path"),
+				ReadOnly:      goutil.BoolAddr(true),
+			},
+		},
 
+		{
+			"Optional fields not given",
+			true, `
+volumeName: test-volume
+mountPath: /foo/bar
+`,
+			&Mount{
+				VolumeName: "test-volume",
+				MountPath:  "/foo/bar",
+			},
+		},
+
+		{
+			"Giving bool value as 'foobar', should fail",
+			false, `
+volumeName: test-volume
+mountPath: /foo/bar
+readOnly: foobar
+`,
+			nil,
+		},
+
+		{
+			"Giving an extra field which does not exist",
+			false, `
+volumeName: test-volume
+mountPath: /foo/bar
+foo: bar
+`,
+			nil,
+		},
+
+		{
+			"No fields given", // UnmarshalYAML won't be even called for empty strings -> default value
+			true,
+			"",
+			&Mount{},
+		},
+
+		{
+			"Not giving a required field",
+			true, `
+volumeName: test-volume
+readOnly: true
+`,
+			&Mount{
+				VolumeName: "test-volume",
+				ReadOnly:   goutil.BoolAddr(true),
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+			var mount Mount
+			err := yaml.Unmarshal([]byte(test.RawMount), &mount)
+			if err != nil {
+				if test.Succeed {
+					t.Errorf("failed to unmarshal 'Mount': %#v\nerror: %v", test.RawMount, err)
+				}
+				return
+			}
+
+			if !test.Succeed {
+				t.Fatalf("Expected %#v to fail, but succeeded! Mount object looks like: %#v", test.RawMount, mount)
+			}
+
+			if !reflect.DeepEqual(mount, *test.Mount) {
+				t.Fatalf("Expected %#v\ngot %#v", *test.Mount, mount)
+			}
+		})
+	}
+}
+
+func TestEmptyDirVolume_UnmarshalYAML(t *testing.T) {
+
+	tests := []struct {
+		Succeed     bool
+		RawEmptyDir string
+		EmptyDir    *EmptyDirVolume
+	}{
+		{true, "name: empty", &EmptyDirVolume{Name: "empty"}},
+		{
+			false, `
+name: empty
+excess: field
+`,
+			nil,
+		},
+		{true, "", &EmptyDirVolume{}}, // UnmarshalYAML won't be even called for empty strings -> default value
+	}
+
+	for _, test := range tests {
+		t.Run("", func(t *testing.T) {
+			var emptyDir EmptyDirVolume
+			err := yaml.Unmarshal([]byte(test.RawEmptyDir), &emptyDir)
+			if err != nil {
+				if test.Succeed {
+					t.Errorf("failed to unmarshal 'EmptyDirVolume': %#v\nError: %v", test.RawEmptyDir, err)
+				}
+				return
+			}
+
+			if !test.Succeed {
+				t.Fatalf("Expected %#v to fail, but succeeded! EmptyDirVolume object looks like: %#v", test.RawEmptyDir, emptyDir)
+			}
+
+			if !reflect.DeepEqual(emptyDir, *test.EmptyDir) {
+				t.Fatalf("Expected %#v\ngot %#v", *test.EmptyDir, emptyDir)
+			}
+		})
+	}
+}
+
+func TestService_UnmarshalYAML(t *testing.T) {
 	tests := []struct {
 		Name       string
 		Succeed    bool
@@ -319,6 +455,60 @@ containers:
 				},
 			},
 		},
+
+		{
+			"Checking mounts works when integrated with services",
+			true, `
+name: frontend
+containers:
+- image: tomaskral/kompose-demo-frontend:test
+  mounts:
+  - volumeName: test-volume
+    mountPath: /foo/bar
+    volumeSubPath: some/path
+    readOnly: true
+`,
+			&Service{
+				Name: "frontend",
+				Containers: []Container{
+					{
+						Image: "tomaskral/kompose-demo-frontend:test",
+						Mounts: []Mount{
+							{
+								VolumeName:    "test-volume",
+								MountPath:     "/foo/bar",
+								VolumeSubPath: goutil.StringAddr("some/path"),
+								ReadOnly:      goutil.BoolAddr(true),
+							},
+						},
+					},
+				},
+			},
+		},
+
+		{
+			"Integrate emptyDirVolume with service",
+			true, `
+name: frontend
+containers:
+- image: tomaskral/kompose-demo-frontend:test
+emptyDirVolumes:
+- name: empty
+`,
+			&Service{
+				Name: "frontend",
+				Containers: []Container{
+					{
+						Image: "tomaskral/kompose-demo-frontend:test",
+					},
+				},
+				EmptyDirVolumes: []EmptyDirVolume{
+					{
+						Name: "empty",
+					},
+				},
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -338,6 +528,87 @@ containers:
 
 			if !reflect.DeepEqual(service, *test.Service) {
 				t.Fatalf("Expected %#v\ngot %#v", *test.Service, service)
+			}
+		})
+	}
+}
+
+func TestVolume_UnmarshalYAML(t *testing.T) {
+
+	storageClass := ResourceName("fast")
+
+	tests := []struct {
+		Name      string
+		Succeed   bool
+		RawVolume string
+		Volume    *Volume
+	}{
+		{
+			"All fields given",
+			true, `
+name: db
+size: 3Gi
+accessMode: ReadWriteMany
+storageClass: fast
+`,
+			&Volume{
+				Name:         ResourceName("db"),
+				Size:         "3Gi",
+				AccessMode:   "ReadWriteMany",
+				StorageClass: &storageClass,
+			},
+		},
+
+		{
+			"Optional fields not given",
+			true, `
+name: db
+size: 3Gi
+accessMode: ReadWriteMany
+`,
+			&Volume{
+				Name:       ResourceName("db"),
+				Size:       "3Gi",
+				AccessMode: "ReadWriteMany",
+			},
+		},
+
+		{
+			"Extra field given",
+			false, `
+name: db
+size: 3Gi
+accessMode: ReadWriteMany
+excess: key
+`,
+			nil,
+		},
+
+		{
+			"No fields given", // UnmarshalYAML won't be even called for empty strings -> default value
+			true,
+			"",
+			&Volume{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+			var volume Volume
+			err := yaml.Unmarshal([]byte(test.RawVolume), &volume)
+			if err != nil {
+				if test.Succeed {
+					t.Errorf("failed to unmarshal: %#v\nerror: %#v", test.RawVolume, err)
+				}
+				return
+			}
+
+			if !test.Succeed {
+				t.Fatalf("Expected %#v to fail, but succeeded!", test.RawVolume)
+			}
+
+			if !reflect.DeepEqual(volume, *test.Volume) {
+				t.Fatalf("Expected %#v\ngot %#v", *test.Volume, volume)
 			}
 		})
 	}
@@ -365,10 +636,18 @@ services:
     ports:
     - port: 5000:80
     - port: 5001:81
+    mounts:
+    - volumeName: test-volume
+      mountPath: /foo/bar
+      volumeSubPath: some/path
+      readOnly: true
+  emptyDirVolumes:
+  - name: empty
 volumes:
 - name: data
   size: 1Gi
-  mode: ReadWriteOnce
+  accessMode: ReadWriteOnce
+  storageClass: fast
 `,
 			&object.OpenCompose{
 				Version: Version,
@@ -403,15 +682,29 @@ volumes:
 										},
 									},
 								},
+								Mounts: []object.Mount{
+									{
+										VolumeName:    "test-volume",
+										MountPath:     "/foo/bar",
+										VolumeSubPath: "some/path",
+										ReadOnly:      true,
+									},
+								},
+							},
+						},
+						EmptyDirVolumes: []object.EmptyDirVolume{
+							{
+								Name: "empty",
 							},
 						},
 					},
 				},
 				Volumes: []object.Volume{
 					{
-						Name: "data",
-						Size: "1Gi",
-						Mode: "ReadWriteOnce",
+						Name:         "data",
+						Size:         "1Gi",
+						AccessMode:   "ReadWriteOnce",
+						StorageClass: goutil.StringAddr("fast"),
 					},
 				},
 			},
@@ -658,6 +951,34 @@ services:
 				},
 			},
 		},
+		{ // testing mounts, one required value "mountPath" -  is not given
+			false, `
+version: 0.1-dev
+services:
+- name: helloworld
+  replicas: 2
+  containers:
+  - image: tomaskral/nonroot-nginx
+    mounts:
+    - volumeName: test-volume
+      readOnly: true
+`,
+			nil,
+		},
+		{ // testing Volumes, one required value "accessMode" - is not given
+			false, `
+version: 0.1-dev
+services:
+- name: helloworld
+  containers:
+  - image: tomaskral/nonroot-nginx
+volumes:
+- name: db
+  size: 5Gi
+  storageClass: fast
+`,
+			nil,
+		},
 	}
 
 	for _, tt := range tests {
@@ -666,8 +987,9 @@ services:
 			openCompose, err := (&Decoder{}).Decode(data)
 			if err != nil {
 				if tt.Succeed {
-					t.Fatalf("Failed to unmarshal %#v; error %#v", tt.File, err)
+					t.Fatalf("Failed to unmarshal %#v; error %v", tt.File, err)
 				}
+				t.Logf("Expected to fail and failed as: %v", err)
 				return
 			}
 

@@ -179,10 +179,41 @@ type ImageRef string
 
 // FIXME: implement ImageRef unmarshalling
 
+type Mount struct {
+	VolumeName ResourceName `yaml:"volumeName"`
+	MountPath  string       `yaml:"mountPath"`
+	// these are optional fields so making them as pointer because it helps
+	// to identify whether these fields were given by user or not
+	// if these are not pointer then it is hard to identify what was given
+	// by user and what is the default value
+	VolumeSubPath *string `yaml:"volumeSubPath,omitempty"`
+	ReadOnly      *bool   `yaml:"readOnly,omitempty"`
+}
+
+func (m *Mount) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type MountAlias Mount
+	var st struct {
+		MountAlias `yaml:",inline"`
+		Leftovers  map[string]interface{} `yaml:",inline"` // Catches all undefined fields and must be empty after parsing.
+	}
+	if err := unmarshal(&st); err != nil {
+		return err
+	}
+
+	if len(st.Leftovers) > 0 {
+		return util.NewExcessKeysErrorFromMap("Mount", st.Leftovers)
+	}
+
+	*m = Mount(st.MountAlias)
+
+	return nil
+}
+
 type Container struct {
-	Image ImageRef      `yaml:"image"`
-	Env   []EnvVariable `yaml:"env,omitempty"`
-	Ports []Port        `yaml:"ports,omitempty"`
+	Image  ImageRef      `yaml:"image"`
+	Env    []EnvVariable `yaml:"env,omitempty"`
+	Ports  []Port        `yaml:"ports,omitempty"`
+	Mounts []Mount       `yaml:"mounts,omitempty"`
 }
 
 func (c *Container) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -205,10 +236,34 @@ func (c *Container) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
+type EmptyDirVolume struct {
+	Name ResourceName `yaml:"name"`
+}
+
+func (e *EmptyDirVolume) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type EmptyDirVolumeAlias EmptyDirVolume
+	var st struct {
+		EmptyDirVolumeAlias `yaml:",inline"`
+		Leftovers           map[string]interface{} `yaml:",inline"` // Catches all undefined fields and must be empty after parsing.
+	}
+	if err := unmarshal(&st); err != nil {
+		return err
+	}
+
+	if len(st.Leftovers) > 0 {
+		return util.NewExcessKeysErrorFromMap("EmptyDirVolume", st.Leftovers)
+	}
+
+	*e = EmptyDirVolume(st.EmptyDirVolumeAlias)
+
+	return nil
+}
+
 type Service struct {
-	Name       ResourceName `yaml:"name"`
-	Containers []Container  `yaml:"containers"`
-	Replicas   *int32       `yaml:"replicas,omitempty"`
+	Name            ResourceName     `yaml:"name"`
+	Containers      []Container      `yaml:"containers"`
+	Replicas        *int32           `yaml:"replicas,omitempty"`
+	EmptyDirVolumes []EmptyDirVolume `yaml:"emptyDirVolumes,omitempty"`
 }
 
 func (s *Service) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -231,18 +286,11 @@ func (s *Service) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-type VolumeSize string
-
-// FIXME: add VolumeSize parsing/validation
-
-type VolumeMode string
-
-// FIXME: add VolumeMode parsing/validation
-
 type Volume struct {
-	Name ResourceName `yaml:"name"`
-	Size VolumeSize   `yaml:"size,omitempty"`
-	Mode VolumeMode   `yaml:"mode,omitempty"`
+	Name         ResourceName  `yaml:"name"`
+	Size         string        `yaml:"size"`
+	AccessMode   string        `yaml:"accessMode"`
+	StorageClass *ResourceName `yaml:"storageClass,omitempty"`
 }
 
 func (v *Volume) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -365,6 +413,24 @@ func (d *Decoder) Decode(data []byte) (*object.OpenCompose, error) {
 				})
 			}
 
+			// convert mounts
+			for _, m := range c.Mounts {
+				mount := object.Mount{
+					VolumeName: string(m.VolumeName),
+					MountPath:  string(m.MountPath),
+				}
+
+				if m.VolumeSubPath != nil {
+					mount.VolumeSubPath = string(*m.VolumeSubPath)
+				}
+
+				if m.ReadOnly != nil {
+					mount.ReadOnly = *m.ReadOnly
+				}
+
+				oc.Mounts = append(oc.Mounts, mount)
+			}
+
 			// convert env
 			for _, e := range c.Env {
 				oc.Environment = append(oc.Environment, object.EnvVariable{
@@ -376,15 +442,28 @@ func (d *Decoder) Decode(data []byte) (*object.OpenCompose, error) {
 			os.Containers = append(os.Containers, oc)
 		}
 
+		// Add emptyDirVolumes
+		for _, emptydir := range s.EmptyDirVolumes {
+			os.EmptyDirVolumes = append(os.EmptyDirVolumes, object.EmptyDirVolume{
+				Name: string(emptydir.Name),
+			})
+		}
+
 		openCompose.Services = append(openCompose.Services, os)
 	}
 
 	// convert volumes
+	// TODO: remove the redundant sting conversion
 	for _, v := range v1.Volumes {
 		ov := object.Volume{
-			Name: string(v.Name),
-			Size: string(v.Size),
-			Mode: string(v.Mode),
+			Name:       string(v.Name),
+			Size:       v.Size,
+			AccessMode: v.AccessMode,
+		}
+
+		if v.StorageClass != nil {
+			storageClass := string(*v.StorageClass)
+			ov.StorageClass = &storageClass
 		}
 
 		openCompose.Volumes = append(openCompose.Volumes, ov)
