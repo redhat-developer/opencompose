@@ -4,20 +4,26 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
+	"github.com/redhat-developer/opencompose/pkg/goutil"
 	"github.com/redhat-developer/opencompose/pkg/object"
 	api_v1 "k8s.io/client-go/pkg/api/v1"
+	ext_v1beta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/runtime"
 	"k8s.io/client-go/pkg/util/intstr"
 )
 
-func TestTransformer_CreateServices(t *testing.T) {
-	name := "test"
-	sMeta := api_v1.ObjectMeta{
+var (
+	name = "test"
+	meta = api_v1.ObjectMeta{
 		Name: name,
 		Labels: map[string]string{
 			"service": name,
 		},
 	}
+)
+
+func TestTransformer_CreateServices(t *testing.T) {
 	sSelector := map[string]string{
 		"service": name,
 	}
@@ -59,7 +65,7 @@ func TestTransformer_CreateServices(t *testing.T) {
 			},
 			[]runtime.Object{
 				&api_v1.Service{
-					ObjectMeta: sMeta,
+					ObjectMeta: meta,
 					Spec: api_v1.ServiceSpec{
 						Selector: sSelector,
 						Ports: []api_v1.ServicePort{
@@ -94,7 +100,7 @@ func TestTransformer_CreateServices(t *testing.T) {
 			},
 			[]runtime.Object{
 				&api_v1.Service{
-					ObjectMeta: sMeta,
+					ObjectMeta: meta,
 					Spec: api_v1.ServiceSpec{
 						Selector: sSelector,
 						Ports: []api_v1.ServicePort{
@@ -150,7 +156,7 @@ func TestTransformer_CreateServices(t *testing.T) {
 			},
 			[]runtime.Object{
 				&api_v1.Service{
-					ObjectMeta: sMeta,
+					ObjectMeta: meta,
 					Spec: api_v1.ServiceSpec{
 						Selector: sSelector,
 						Ports: []api_v1.ServicePort{
@@ -169,7 +175,7 @@ func TestTransformer_CreateServices(t *testing.T) {
 					},
 				},
 				&api_v1.Service{
-					ObjectMeta: sMeta,
+					ObjectMeta: meta,
 					Spec: api_v1.ServiceSpec{
 						Selector: sSelector,
 						Ports: []api_v1.ServicePort{
@@ -262,7 +268,7 @@ func TestTransformer_CreateServices(t *testing.T) {
 			},
 			[]runtime.Object{
 				&api_v1.Service{
-					ObjectMeta: sMeta,
+					ObjectMeta: meta,
 					Spec: api_v1.ServiceSpec{
 						Selector: sSelector,
 						Ports: []api_v1.ServicePort{
@@ -291,7 +297,7 @@ func TestTransformer_CreateServices(t *testing.T) {
 					},
 				},
 				&api_v1.Service{
-					ObjectMeta: sMeta,
+					ObjectMeta: meta,
 					Spec: api_v1.ServiceSpec{
 						Selector: sSelector,
 						Ports: []api_v1.ServicePort{
@@ -342,5 +348,230 @@ func TestTransformer_CreateServices(t *testing.T) {
 			t.Errorf("Expected\n%+v\n, got\n%+v", tt.KubernetesServices, ks)
 			continue
 		}
+	}
+}
+
+func TestTransformer_CreateIngresses(t *testing.T) {
+	name := "test"
+
+	tests := []struct {
+		Succeed             bool
+		Service             *object.Service
+		KubernetesIngresses []runtime.Object
+	}{
+		{
+			true,
+			&object.Service{
+				Name: name,
+				Containers: []object.Container{
+					{
+						Ports: []object.Port{},
+					},
+				},
+			},
+			[]runtime.Object{},
+		},
+		{
+			true,
+			&object.Service{
+				Name: name,
+				Containers: []object.Container{
+					{
+						Ports: []object.Port{
+							{
+								Port: object.PortMapping{ServicePort: 80},
+								Host: goutil.StringAddr("alpha.127.0.0.1.nip.io"),
+								Path: "/admin",
+							},
+						},
+					},
+				},
+			},
+			[]runtime.Object{
+				&ext_v1beta1.Ingress{
+					ObjectMeta: meta,
+					Spec: ext_v1beta1.IngressSpec{
+						Rules: []ext_v1beta1.IngressRule{
+							{
+								Host: "alpha.127.0.0.1.nip.io",
+								IngressRuleValue: ext_v1beta1.IngressRuleValue{
+									HTTP: &ext_v1beta1.HTTPIngressRuleValue{
+										Paths: []ext_v1beta1.HTTPIngressPath{
+											{
+												Path: "/admin",
+												Backend: ext_v1beta1.IngressBackend{
+													ServiceName: name,
+													ServicePort: intstr.FromInt(80),
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			true,
+			&object.Service{
+				Name: name,
+				Containers: []object.Container{
+					{
+						Ports: []object.Port{
+							{
+								Port: object.PortMapping{ServicePort: 80},
+								Host: goutil.StringAddr("alpha.127.0.0.1.nip.io"),
+								Path: "/web1",
+							},
+							{
+								Port: object.PortMapping{ServicePort: 80},
+								Host: goutil.StringAddr("beta.127.0.0.1.nip.io"),
+								Path: "/w1",
+							},
+							{
+								Port: object.PortMapping{ServicePort: 80},
+								Host: goutil.StringAddr("alpha.127.0.0.1.nip.io"),
+								Path: "/web2",
+							},
+							{
+								Port: object.PortMapping{ServicePort: 80},
+								Host: goutil.StringAddr("beta.127.0.0.1.nip.io"),
+								Path: "/w2",
+							},
+							{
+								Port: object.PortMapping{ServicePort: 443},
+								Host: goutil.StringAddr("alpha.127.0.0.1.nip.io"),
+								Path: "/admin1",
+							},
+							{
+								Port: object.PortMapping{ServicePort: 443},
+								Host: goutil.StringAddr("beta.127.0.0.1.nip.io"),
+								Path: "/adm1",
+							},
+						},
+					},
+					{
+						Ports: []object.Port{
+							{
+								Port: object.PortMapping{ServicePort: 443},
+								Host: goutil.StringAddr("alpha.127.0.0.1.nip.io"),
+								Path: "/admin2",
+							},
+							{
+								Port: object.PortMapping{ServicePort: 443},
+								Host: goutil.StringAddr("beta.127.0.0.1.nip.io"),
+								Path: "/adm2",
+							},
+						},
+					},
+				},
+			},
+			[]runtime.Object{
+				&ext_v1beta1.Ingress{
+					ObjectMeta: meta,
+					Spec: ext_v1beta1.IngressSpec{
+						Rules: []ext_v1beta1.IngressRule{
+							{
+								Host: "alpha.127.0.0.1.nip.io",
+								IngressRuleValue: ext_v1beta1.IngressRuleValue{
+									HTTP: &ext_v1beta1.HTTPIngressRuleValue{
+										Paths: []ext_v1beta1.HTTPIngressPath{
+											{
+												Path: "/web1",
+												Backend: ext_v1beta1.IngressBackend{
+													ServiceName: name,
+													ServicePort: intstr.FromInt(80),
+												},
+											},
+											{
+												Path: "/web2",
+												Backend: ext_v1beta1.IngressBackend{
+													ServiceName: name,
+													ServicePort: intstr.FromInt(80),
+												},
+											},
+											{
+												Path: "/admin1",
+												Backend: ext_v1beta1.IngressBackend{
+													ServiceName: name,
+													ServicePort: intstr.FromInt(443),
+												},
+											},
+											{
+												Path: "/admin2",
+												Backend: ext_v1beta1.IngressBackend{
+													ServiceName: name,
+													ServicePort: intstr.FromInt(443),
+												},
+											},
+										},
+									},
+								},
+							},
+							{
+								Host: "beta.127.0.0.1.nip.io",
+								IngressRuleValue: ext_v1beta1.IngressRuleValue{
+									HTTP: &ext_v1beta1.HTTPIngressRuleValue{
+										Paths: []ext_v1beta1.HTTPIngressPath{
+											{
+												Path: "/w1",
+												Backend: ext_v1beta1.IngressBackend{
+													ServiceName: name,
+													ServicePort: intstr.FromInt(80),
+												},
+											},
+											{
+												Path: "/w2",
+												Backend: ext_v1beta1.IngressBackend{
+													ServiceName: name,
+													ServicePort: intstr.FromInt(80),
+												},
+											},
+											{
+												Path: "/adm1",
+												Backend: ext_v1beta1.IngressBackend{
+													ServiceName: name,
+													ServicePort: intstr.FromInt(443),
+												},
+											},
+											{
+												Path: "/adm2",
+												Backend: ext_v1beta1.IngressBackend{
+													ServiceName: name,
+													ServicePort: intstr.FromInt(443),
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	transformer := Transformer{}
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			ks, err := transformer.CreateIngresses(tt.Service)
+			if err != nil {
+				if tt.Succeed {
+					t.Fatalf("Failed to create ingresses from %+v: %s", tt.Service, err)
+				}
+				return
+			}
+
+			if !tt.Succeed {
+				t.Fatal(spew.Errorf("Expected ingresses %#+v to fail!", tt.Service))
+			}
+
+			if !reflect.DeepEqual(ks, tt.KubernetesIngresses) {
+				t.Fatal(spew.Errorf("Expected:\n%#+v\n, got:\n%#+v", tt.KubernetesIngresses, ks))
+			}
+		})
 	}
 }

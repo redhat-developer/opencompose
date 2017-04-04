@@ -15,6 +15,8 @@ const (
 type Port struct {
 	Port PortMapping
 	Type PortType
+	Host *string
+	Path string
 }
 
 type EnvVariable struct {

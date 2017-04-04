@@ -136,6 +136,8 @@ This defines what ports will be exposed for communication.
 # <PortSpec>
   port: 8080:80
   type: internal
+  host: domain.tld
+  path: /admin
 
 ```
 
@@ -161,3 +163,30 @@ Default value for type is `internal`.
 - `internal` - port will be accessible only from inside the Kubernetes cluster
 - `external` - port will be accessible from inside and outside of the Kubernetes cluster
 
+#### host 
+| type        | required | possible values                                           |
+|-------------|----------|-----------------------------------------------------------|
+| string      |    no    | FQDN (fully qualified domain name) as defined by RFC 3986 |
+
+Specifying host will make your application accessible outside of the cluster on domain specified as a value of `host`. (Note: this requires you to manually setup DNS records to point to your cluster's Ingress router. For development you can use services like http://nip.io/ or [http://xip.io/].)
+
+#### path 
+| type        | required | possible values                                               |
+|-------------|----------|---------------------------------------------------------------|
+| string      |    no    | An extended POSIX regex as defined by IEEE Std 1003.1         |
+|             |          | (i.e this follows the egrep/unix syntax, not the perl syntax) |
+
+- If you don't specify a `path` it matches all request to `host`.
+- You have to specify `host` if you want to specify `path`.  
+
+##### Path Based Ingresses
+Path based ingresses specify a path component that can be compared against a URL (which requires that the traffic for the ingress be HTTP based) such that multiple ingresses can be served using the same host name, each with a different path. Ingress controller should match ingresses based on the most specific path to the least; however, this depends on the ingress controller implementation. The following table shows example ingresses and their accessibility:
+
+| Ingress              | When Compared to     | Accessible |
+|----------------------|----------------------|------------|
+| www.example.com/test | www.example.com/test | Yes |
+|                      | www.example.com      | No  |
+| www.example.com/test and www.example.com | www.example.com/test | Yes |
+|                      | www.example.com      | Yes |
+| www.example.com      | www.example.com/test | Yes (Matched by the host, not the ingress) |
+|                      | www.example.com      | Yes |
