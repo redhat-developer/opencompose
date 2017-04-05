@@ -15,6 +15,7 @@ import (
 	"github.com/redhat-developer/opencompose/pkg/transform"
 	"github.com/redhat-developer/opencompose/pkg/transform/kubernetes"
 	"github.com/redhat-developer/opencompose/pkg/transform/openshift"
+	pkgutil "github.com/redhat-developer/opencompose/pkg/util"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"k8s.io/client-go/pkg/api"
@@ -26,6 +27,10 @@ import (
 var (
 	convertExample = `  # Converts file
   opencompose convert -f opencompose.yaml`
+)
+
+const (
+	retryAttempts = 3
 )
 
 func NewCmdConvert(v *viper.Viper, out, outerr io.Writer) *cobra.Command {
@@ -61,7 +66,6 @@ func GetValidatedObject(v *viper.Viper, cmd *cobra.Command, out, outerr io.Write
 	if len(files) < 1 {
 		return nil, cmdutil.UsageError(cmd, "there has to be at least one file")
 	}
-
 	var ocObjects []*object.OpenCompose
 
 	for _, file := range files {
@@ -74,6 +78,13 @@ func GetValidatedObject(v *viper.Viper, cmd *cobra.Command, out, outerr io.Write
 			if err != nil {
 				return nil, fmt.Errorf("unable to read from stdin: %s", err)
 			}
+		} else if strings.HasPrefix(file, "http://") || strings.HasPrefix(file, "https://") {
+			// Check if the passed resource is a URL or not
+			// TODO: add test for validating this against an actual resource on the web
+			data, err = pkgutil.GetURLData(file, retryAttempts)
+			if err != nil {
+				return nil, fmt.Errorf("an error occurred while fetching data from the url %v: %v", file, err)
+			}
 		} else {
 			data, err = ioutil.ReadFile(file)
 			if err != nil {
@@ -82,7 +93,7 @@ func GetValidatedObject(v *viper.Viper, cmd *cobra.Command, out, outerr io.Write
 		}
 		decoder, err := encoding.GetDecoderFor(data)
 		if err != nil {
-			return nil, fmt.Errorf("could not find decoder for file '%s': %s", file, err)
+			return nil, fmt.Errorf("could not find decoder for resource '%s': %s", file, err)
 		}
 
 		o, err := decoder.Decode(data)

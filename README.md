@@ -59,6 +59,12 @@ services:
 opencompose convert -f hello-nginx.yaml
 ```
 
+Alternatively, you could also simply pass the URL of the remote file to OpenCompose, like -
+
+```sh
+opencompose convert -f https://raw.githubusercontent.com/redhat-developer/opencompose/master/examples/hello-nginx.yaml
+```
+
 This will create two Kubernetes files in current directory - `helloworld-deployment.yaml` and `helloworld-service.yaml`.
 
 To deploy your application to Kubernetes run:
