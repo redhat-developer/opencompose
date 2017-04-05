@@ -146,7 +146,15 @@ func RunConvert(v *viper.Viper, cmd *cobra.Command, out, outerr io.Writer) error
 			}
 
 			filename := fmt.Sprintf("%s-%s.yaml", m.GetName(), strings.ToLower(kind))
-			return ioutil.WriteFile(path.Join(outputDir, filename), data, 0644)
+
+			err := ioutil.WriteFile(path.Join(outputDir, filename), data, 0644)
+			if err != nil {
+				return fmt.Errorf("failed to write file %q: %s", filename, err)
+			}
+
+			fmt.Fprintf(out, "created file %q\n", filename)
+
+			return nil
 		}
 	}
 
