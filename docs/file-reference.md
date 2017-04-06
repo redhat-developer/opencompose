@@ -7,12 +7,13 @@ version: "0.1-dev"
 
 services:
    name: foobar
+   replicas: 3
    containers:
    - image: foo/bar:tag
      env:
      - foo=bar
      command: ["/bin/foobar"]
-     args: 
+     args:
      - "-f"
      - "/tmp/foobar"
      ports:
@@ -25,7 +26,7 @@ OpenCompose file has two main sections *version* and *services*.
 
 ## version
 | type  | required |
-|-------|----------| 
+|-------|----------|
 |string |    yes   |
 
 Version of OpenCompose format.
@@ -35,14 +36,15 @@ Version of OpenCompose format.
 `services` has to be array of [ServiceSpec](#servicespec).
 
 ### ServiceSpec
-Describes one service. Service can be composed of one or multiple containers which are scheduled 
+Describes one service. Service can be composed of one or multiple containers which are scheduled
 together and can communicate using localhost. (Containers in the same service share network namespace.)
 
-Each service has name and list of the containers.
+Each service has name and list of the containers, while `replicas` can be optional.
 
 ```yml
 # <ServiceSpec>
   name: foo
+  replicas: 4
   containers:
   - <ContainerSpec>
 ```
@@ -54,9 +56,16 @@ Each service has name and list of the containers.
 
 Name of the service.
 
+#### replicas
+| type    | required |
+|---------|----------|
+| integer |    no    |
+
+Number of desired pods of this particluar service. This is an optional field. The valid value can only be a positive number.
+
 ### containers
 | type                                    | required |
-|-----------------------------------------|----------| 
+|-----------------------------------------|----------|
 |array of [ContainerSpec](#containerspec) |    yes   |
 
 Each item in [containers](#containers) ([ContainerSpec](#containerspec)) defines one container.
@@ -141,7 +150,7 @@ This defines what ports will be exposed for communication.
 
 ```
 
-#### port 
+#### port
 | type | required |
 |------|----------|
 |string|    yes   |
@@ -153,7 +162,7 @@ This is a string in following format: `ContainerPort:ServicePort`
 `ServicePort` is optional. It defaults to `ContainerPort` if not specified.
 
 
-#### type 
+#### type
 | type        | required | possible values         |
 |-------------|----------|-------------------------|
 |enum(string) |    no    | `internal` or `external`|
@@ -163,21 +172,21 @@ Default value for type is `internal`.
 - `internal` - port will be accessible only from inside the Kubernetes cluster
 - `external` - port will be accessible from inside and outside of the Kubernetes cluster
 
-#### host 
+#### host
 | type        | required | possible values                                           |
 |-------------|----------|-----------------------------------------------------------|
 | string      |    no    | FQDN (fully qualified domain name) as defined by RFC 3986 |
 
 Specifying host will make your application accessible outside of the cluster on domain specified as a value of `host`. (Note: this requires you to manually setup DNS records to point to your cluster's Ingress router. For development you can use services like http://nip.io/ or [http://xip.io/].)
 
-#### path 
+#### path
 | type        | required | possible values                                               |
 |-------------|----------|---------------------------------------------------------------|
 | string      |    no    | An extended POSIX regex as defined by IEEE Std 1003.1         |
 |             |          | (i.e this follows the egrep/unix syntax, not the perl syntax) |
 
 - If you don't specify a `path` it matches all request to `host`.
-- You have to specify `host` if you want to specify `path`.  
+- You have to specify `host` if you want to specify `path`.
 
 ##### Path Based Ingresses
 Path based ingresses specify a path component that can be compared against a URL (which requires that the traffic for the ingress be HTTP based) such that multiple ingresses can be served using the same host name, each with a different path. Ingress controller should match ingresses based on the most specific path to the least; however, this depends on the ingress controller implementation. The following table shows example ingresses and their accessibility:

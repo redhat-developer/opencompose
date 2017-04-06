@@ -107,7 +107,9 @@ func GetValidatedObject(v *viper.Viper, cmd *cobra.Command, out, outerr io.Write
 	// FIXME: implement merging OpenCompose obejcts
 	openCompose := ocObjects[0]
 
-	openCompose.Validate()
+	if err := openCompose.Validate(); err != nil {
+		return nil, err
+	}
 
 	return openCompose, nil
 }

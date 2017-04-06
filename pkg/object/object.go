@@ -1,5 +1,7 @@
 package object
 
+import "fmt"
+
 type PortMapping struct {
 	ContainerPort int
 	ServicePort   int
@@ -33,6 +35,7 @@ type Container struct {
 type Service struct {
 	Name       string
 	Containers []Container
+	Replicas   *int32
 }
 
 type Volume struct {
@@ -47,9 +50,27 @@ type OpenCompose struct {
 	Volumes  []Volume
 }
 
+func (s *Service) Validate() error {
+	// validate service name, like it cannot have underscores, etc.
+
+	// validate containers
+
+	// validate replicas
+	if s.Replicas != nil && *s.Replicas < 0 {
+		return fmt.Errorf("Replica count is negative in service: %q", s.Name)
+	}
+
+	return nil
+}
+
 // Does high level (mostly semantic) validation of OpenCompose
 // (e.g. it checks internal object references)
 func (o *OpenCompose) Validate() error {
-	// TODO: implement
+	// validating services
+	for _, service := range o.Services {
+		if err := service.Validate(); err != nil {
+			return err
+		}
+	}
 	return nil
 }

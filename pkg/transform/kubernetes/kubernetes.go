@@ -167,6 +167,8 @@ func (t *Transformer) CreateDeployments(o *object.Service) ([]runtime.Object, er
 		},
 	}
 
+	d.Spec.Replicas = o.Replicas
+
 	for i, c := range o.Containers {
 		kc := api_v1.Container{
 			Name:  fmt.Sprintf("%s-%d", o.Name, i),

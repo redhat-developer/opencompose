@@ -11,3 +11,7 @@ func StringOrEmpty(p *string) string {
 	}
 	return ""
 }
+
+func Int32Addr(i int32) *int32 {
+	return &i
+}
