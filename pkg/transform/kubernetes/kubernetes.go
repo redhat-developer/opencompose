@@ -188,9 +188,9 @@ func (t *Transformer) CreateDeployments(o *object.Service) ([]runtime.Object, er
 		}
 
 		d.Spec.Template.Spec.Containers = append(d.Spec.Template.Spec.Containers, kc)
-
-		result = append(result, d)
 	}
+
+	result = append(result, d)
 
 	return result, nil
 }
