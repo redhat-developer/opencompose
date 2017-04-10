@@ -59,6 +59,7 @@ func TestPortMapping_UnmarshalYAML(t *testing.T) {
 			if tt.Succeed {
 				t.Errorf("Failed to unmarshal %q: %s", tt.RawPort, err)
 			}
+			t.Logf("Expected failure and failed with err: %v", err)
 			continue
 		}
 
@@ -101,6 +102,7 @@ func TestPortType_UnmarshalYAML(t *testing.T) {
 			if tt.Succeed {
 				t.Errorf("Failed to unmarshal port type %q: %s", tt.RawPortType, err)
 			}
+			t.Logf("Expected failure and failed with err: %v", err)
 			continue
 		}
 
@@ -212,6 +214,7 @@ path: "/admin"
 				if tt.Succeed {
 					t.Fatalf("Failed to unmarshal port %q: %s", tt.RawPort, err)
 				}
+				t.Logf("Expected failure and failed with err: %v", err)
 				return
 			}
 
@@ -250,6 +253,7 @@ func TestEnvVariable_UnmarshalYAML(t *testing.T) {
 			if tt.Succeed {
 				t.Errorf("Failed to unmarshal %#v; error %#v", tt.RawEnvVar, err)
 			}
+			t.Logf("Expected failure and failed with err: %v", err)
 			continue
 		}
 
@@ -545,12 +549,12 @@ services:
 - name: frontend
   containers:
   - image: tomaskral/kompose-demo-frontend:test
-	env:
-	- KEY=value
-	- KEY2=value2
-	ports:
-	- port: 5000:80
-	- port: 5001:81
+    env:
+    - KEY=value
+    - KEY2=value2
+    ports:
+    - port: 5000:80
+    - port: 5001:81
 volumes:
 - name: data
   size: 1Gi
@@ -668,6 +672,7 @@ services:
 				if tt.Succeed {
 					t.Fatalf("Failed to unmarshal %#v; error %#v", tt.File, err)
 				}
+				t.Logf("Expected failure and failed with err: %v", err)
 				return
 			}
 

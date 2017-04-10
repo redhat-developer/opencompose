@@ -337,6 +337,7 @@ func TestTransformer_CreateServices(t *testing.T) {
 			if tt.Succeed {
 				t.Errorf("Failed to create services from %+v: %s", tt.Service, err)
 			}
+			t.Logf("Expected failure and failed with err: %v", err)
 			continue
 		}
 
@@ -563,6 +564,7 @@ func TestTransformer_CreateIngresses(t *testing.T) {
 				if tt.Succeed {
 					t.Fatalf("Failed to create ingresses from %+v: %s", tt.Service, err)
 				}
+				t.Logf("Expected failure and failed with err: %v", err)
 				return
 			}
 

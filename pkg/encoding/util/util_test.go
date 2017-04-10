@@ -126,6 +126,7 @@ func TestValidateRequiredFields(t *testing.T) {
 			if tt.Succeed {
 				t.Errorf("Failed to validate %#v: %s", tt.Value, err)
 			}
+			t.Logf("Expected failure and failed with err: %v", err)
 			continue
 		}
 
