@@ -1,0 +1,27 @@
+version: 0.1-dev
+
+services:
+- name: redis-master
+  containers:
+  - image: gcr.io/google_containers/redis:e2e 
+    ports:
+    - port: 6379
+
+- name: redis-slave
+  containers:
+  - image: gcr.io/google_samples/gb-redisslave:v1
+    ports:
+    - port: 6379
+    env:
+    - name: GET_HOSTS_FROM
+      value: dns
+
+- name: frontend
+  containers:
+  - image: gcr.io/google-samples/gb-frontend:v4
+    ports:
+    - port: 80:80
+      type: external
+    env:
+    - name: GET_HOSTS_FROM
+      value: dns

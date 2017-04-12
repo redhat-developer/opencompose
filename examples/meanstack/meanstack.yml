@@ -1,0 +1,25 @@
+version: 0.1-dev
+
+services:
+- name: mongo
+  containers:
+  - image: mongo
+    ports:
+    - port: 27017:27017
+      type: external
+    mounts:
+    - volumeRef: mongo-persistent-storage
+      mountPath: /data/db
+
+- name: web
+  replicas: 2
+  containers:
+  - image: surajnarwade/myapp
+    ports: 
+    - port: 3000:80
+      type: external
+
+volumes:
+- name: mongo-persistent-storage
+  size: 100Mi
+  accessMode: ReadWriteMany
