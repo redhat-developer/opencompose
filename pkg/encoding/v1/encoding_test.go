@@ -304,7 +304,7 @@ containers:
 		},
 
 		{
-			"Not giving any replica value it's an optional field",
+			"Providing only mandatory fields, omitting the optional ones",
 			true, `
 name: frontend
 containers:
