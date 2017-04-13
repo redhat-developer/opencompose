@@ -78,7 +78,7 @@ func TestOpenCompose_Validate(t *testing.T) {
 		},
 
 		{
-			"Valid replica value: -1",
+			"Invalid replica value: -1",
 			false,
 			&OpenCompose{
 				Version: Version,
