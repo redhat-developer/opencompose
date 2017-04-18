@@ -19,49 +19,6 @@ Note that, as seen above, one secret can have multiple `data` values.
 
 ---
 
-To consume the above secret in OpenCompose, here is the proposed syntax.
-
-Secrets in Kubernetes can be consumed either as an environment variable, or as a mounted volume.
- 
-- ##### Consuming an already created Kubernetes secret in OpenCompose as an environment variable
- 
- ```yaml
-version: "0.1-dev"
-
-services:
-   name: foobar
-   containers:
-   - image: foo/bar:tag
-     ports:
-     - port: 8080:80
-     env:
-     - foo=bar
-     - db_user:
-         secret: kubesec/username
-     - db_pass:
-         secret: kubesec/password
-```
-
-- ##### Consuming an already created Kubernetes secret in OpenCompose as a mounted volume
- 
- ```yaml
-version: "0.1-dev"
-
-services:
-   name: foobar
-   containers:
-   - image: foo/bar:tag
-     ports:
-     - port: 8080:80
-     mounts:
-     - mountPath: /var/secret_path/user_info
-       secret: kubesec/username
-     - mountPath: /var/secret_path/pass_info
-       secret: kubesec/password
-```
-
----
-
 #### Creating a new secret:
 
 To create a new secret, a top level `secrets` key can be used as follows:
@@ -115,6 +72,50 @@ secrets:
   secret_name:
     secret_key:
       file: <file path>
+```
+
+---
+
+
+To consume the above secret in OpenCompose, here is the proposed syntax.
+
+Secrets in Kubernetes can be consumed either as an environment variable, or as a mounted volume.
+ 
+- ##### Consuming an already created Kubernetes secret in OpenCompose as an environment variable
+ 
+ ```yaml
+version: "0.1-dev"
+
+services:
+   name: foobar
+   containers:
+   - image: foo/bar:tag
+     ports:
+     - port: 8080:80
+     env:
+     - foo=bar
+     - db_user:
+         secret: kubesec/username
+     - db_pass:
+         secret: kubesec/password
+```
+
+- ##### Consuming an already created Kubernetes secret in OpenCompose as a mounted volume
+ 
+ ```yaml
+version: "0.1-dev"
+
+services:
+   name: foobar
+   containers:
+   - image: foo/bar:tag
+     ports:
+     - port: 8080:80
+     mounts:
+     - mountPath: /var/secret_path/user_info
+       secret: kubesec/username
+     - mountPath: /var/secret_path/pass_info
+       secret: kubesec/password
 ```
 
 ---
