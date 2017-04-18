@@ -45,7 +45,7 @@ secrets:
       travis:
         file: /etc/travis.passwd
       jenkins:
-        value: strongpassword@@
+        data: strongpassword@@
       circle: stillstrongpassword@@
 ```
 
@@ -62,7 +62,7 @@ Or, the long syntax will be more verbose like -
 secrets:
   secret_name:
     secret_key:
-      value: secret_value
+      data: secret_value
 ```
 
 In order to retrieve a secret from a file, use -
@@ -134,8 +134,8 @@ For the above mentioned syntax, the `secrets` definition at the container level 
 
 `secrets.<secret name>` is a _mandatory_ field of type _string_.
 
-`secrets.<secret name>.<secret key>` is a _mandatory_ field of type _string_. This can either by followed by the `file` or `value` directives, or be provided a _string_ containing the value of the secret key.
+`secrets.<secret name>.<secret key>` is a _mandatory_ field of type _string_. This can either by followed by the `file` or `data` directives, or be provided a _string_ containing the value of the secret key.
 
 `secrets.<secret name>.<secret key>.file` is an _optional_ field of type _string_.
 
-`secrets.<secret name>.<secret key>.value` is an _optional_ field of type _string_.
+`secrets.<secret name>.<secret key>.data` is an _optional_ field of type _string_.
