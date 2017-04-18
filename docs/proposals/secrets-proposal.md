@@ -46,17 +46,9 @@ secrets:
         file: /etc/travis.passwd
       jenkins:
         data: strongpassword@@
-      circle: stillstrongpassword@@
 ```
 
-Here, the short syntax treats the provided value as a secret literal.
-```yaml
-secrets:
-  secret_name:
-    secret_key: secret_value
-```
-
-Or, the long syntax will be more verbose like -
+The syntax will look like -
 
 ```yaml
 secrets:
