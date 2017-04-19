@@ -21,7 +21,7 @@ You can retrieve binaries for Linux, macOS and Windows on our [GitHub release pa
 ##### Linux
 If you prefer to do it straight from CLI here's a one-liner for you:
 ```bash
-curl -L https://github.com/redhat-developer/opencompose/releases/download/v0.1.0-alpha.0/opencompose-v0.1.0-alpha.0-d0edfd9-linux-64bit.tar.xz | tar -xJ ./opencompose
+curl -L https://github.com/redhat-developer/opencompose/releases/download/v0.1.0/opencompose-linux-amd64 -o opencompose
 ```
 and if you want it installed system-wide:
 ```bash
