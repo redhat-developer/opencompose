@@ -20,7 +20,7 @@ GO_LDFLAGS =-ldflags="-X $(GO_IMPORT_PATH)/pkg/version.gitVersion=$(GIT_VERSION)
 endif
 
 .PHONY: build
-build:
+build bin:
 	go build $(GO_LDFLAGS)
 
 .PHONY: install
@@ -30,6 +30,11 @@ install:
 .PHONY: test
 test:
 	go test $(GO_PACKAGES)
+
+# compile opencompose for multiple platforms
+.PHONY: cross
+cross:
+	gox -osarch="darwin/amd64 linux/amd64 linux/arm windows/amd64" -output="bin/opencompose-{{.OS}}-{{.Arch}}" $(GO_LDFLAGS)
 
 .PHONY: checks
 checks: check-gofmt check-goimports check-govet
