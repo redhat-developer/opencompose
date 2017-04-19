@@ -1,0 +1,285 @@
+#!/usr/bin/env bash
+
+# Constants. Enter relevant repo information here.
+UPSTREAM_REPO="redhat-developer"
+CLI="opencompose"
+GITPATH="$GOPATH/src/github.com/redhat-developer/opencompose"
+
+usage() {
+  echo "This will prepare $CLI for release!"
+  echo ""
+  echo "Requirements:"
+  echo " git"
+  echo " hub"
+  echo " github-release"
+  echo " github_changelog_generator"
+  echo " GITHUB_TOKEN in your env variable"
+  echo " "
+  echo "Not only that, but you must have permission for:"
+  echo " Tagging releases within Github"
+  echo ""
+}
+
+requirements() {
+
+  if [ "$PWD" != "$GITPATH" ]; then
+    echo "ERROR: Must be in the $GITPATH directory"
+    exit 0
+  fi
+
+  if ! hash git 2>/dev/null; then
+    echo "ERROR: No git."
+    exit 0
+  fi
+
+  if ! hash github-release 2>/dev/null; then
+    echo "ERROR: No $GOPATH/bin/github-release. Please run 'go get -v github.com/aktau/github-release'"
+    exit 0
+  fi
+
+  if ! hash github_changelog_generator 2>/dev/null; then
+    echo "ERROR: github_changelog_generator required to generate the change log. Please run 'gem install github_changelog_generator"
+    exit 0
+  fi
+
+  if ! hash hub 2>/dev/null; then
+    echo "ERROR: Hub needed in order to create the relevant PR's. Please install hub @ https://github.com/github/hub"
+    exit 0
+  fi
+
+  if [[ -z "$GITHUB_TOKEN" ]]; then
+    echo "ERROR: export GITHUB_TOKEN=yourtoken needed for using github-release"
+    exit 0
+  fi
+}
+
+# Clone and then change to user's upstream repo for pushing to master / opening PR's :)
+clone() {
+  git clone ssh://git@github.com/$UPSTREAM_REPO/$CLI.git
+  if [ $? -eq 0 ]; then
+        echo OK
+  else
+        echo FAIL
+        exit
+  fi
+  cd $CLI
+  git remote remove origin
+  git remote add origin git@github.com:$ORIGIN_REPO/$CLI.git
+  git remote add upstream http://github.com/$UPSTREAM_REPO/$CLI
+  git checkout -b release-$1
+  cd ..
+}
+
+replaceversion() {
+  cd $CLI
+
+  #echo "1. Replaced version in version.go"
+  #sed -i "s/$1/$2/g" cmd/version.go
+
+  echo "2. Replaced README.md versioning"
+  sed -i "s/$1/$2/g" README.md
+  
+  cd ..
+}
+
+changelog() {
+  cd $CLI
+  echo "Generating changelog using github-changelog-generator"
+  github_changelog_generator $UPSTREAM_REPO/$CLI -t $GITHUB_TOKEN --future-release v$1
+  cd ..
+}
+
+changelog_github() {
+  touch changes.txt
+  echo "Write your GitHub changelog here" >> changes.txt
+  $EDITOR changes.txt
+}
+
+build_binaries() {
+  cd $CLI
+  make cross .
+  cd ..
+}
+
+git_commit() {
+  cd $CLI 
+
+  BRANCH=`git symbolic-ref --short HEAD`
+  if [ -z "$BRANCH" ]; then
+    echo "Unable to get branch name, is this even a git repo?"
+    return 1
+  fi
+  echo "Branch: " $BRANCH
+
+  git add .
+  git commit -m "$1 Release"
+  git push origin $BRANCH
+
+  echo "\nSleeping for 3 seconds for GitHub to catch-up\n"
+  sleep 3 # Sleep 3 seconds for GitHub to catch up to changes (sometimes we're too fast!)
+
+  hub pull-request -b $UPSTREAM_REPO/$CLI:master -h $ORIGIN_REPO/$CLI:$BRANCH
+
+  cd ..
+  echo ""
+  echo "PR opened against master to update version"
+  echo "MERGE THIS BEFORE CONTINUING"
+  echo ""
+}
+
+git_pull() {
+  cd $CLI
+  git pull
+  cd ..
+}
+
+
+git_sync() {
+  cd $CLI
+  git fetch upstream master
+  git rebase upstream/master
+  cd ..
+}
+
+git_tag() {
+  cd $CLI
+  git tag v$1
+  cd ..
+}
+
+push() {
+  CHANGES=$(cat changes.txt)
+  # Release it!
+
+  echo "Creating GitHub tag"
+  github-release release \
+      --user $UPSTREAM_REPO \
+      --repo $CLI \
+      --tag v$1 \
+      --name "v$1" \
+      --description "$CHANGES"
+  if [ $? -eq 0 ]; then
+        echo UPLOAD OK 
+  else 
+        echo UPLOAD FAIL
+        exit
+  fi
+
+  # Upload all the binaries generated in bin/
+  for f in $CLI/bin/*
+  do
+    echo "Uploading $f binary"
+    NAME=`echo $f | sed "s,$CLI/bin/,,g"`
+    github-release upload \
+        --user $UPSTREAM_REPO \
+        --repo $CLI \
+        --tag v$1 \
+        --file $f \
+        --name $NAME
+    if [ $? -eq 0 ]; then
+          echo UPLOAD OK 
+    else 
+          echo UPLOAD FAIL
+          exit
+    fi
+  done
+
+  echo "DONE"
+  echo "DOUBLE CHECK IT:"
+  echo "!!!"
+  echo "https://github.com/$UPSTREAM_REPO/$CLI/releases/edit/$1"
+  echo "!!!"
+}
+
+clean() {
+  rm -rf $CLI $CLI-$1 $CLI-$1.tar.gz changes.txt
+}
+
+main() {
+  local cmd=$1
+  usage
+
+  requirements
+
+  echo "What is your Github username? (location of your $CLI fork)"
+  read ORIGIN_REPO 
+  echo "You entered: $ORIGIN_REPO"
+  echo ""
+  
+  echo ""
+  echo "First, please enter the version of the NEW release: "
+  read VERSION
+  echo "You entered: $VERSION"
+  echo ""
+
+  echo ""
+  echo "Second, please enter the version of the LAST release: "
+  read PREV_VERSION
+  echo "You entered: $PREV_VERSION"
+  echo ""
+
+  clear
+
+  echo "Now! It's time to go through each step of releasing $CLI!"
+  echo "If one of these steps fails / does not work, simply re-run ./release.sh"
+  echo "Re-enter the information at the beginning and continue on the failed step"
+  echo ""
+
+  PS3='Please enter your choice: '
+  options=(
+  "Git clone master"
+  "Replace version number"
+  "Generate changelog"
+  "Generate GitHub changelog"
+  "Create PR"
+  "Sync with master"
+  "Create tag"
+  "Build binaries"
+  "Upload the binaries and push to GitHub release page"
+  "Clean"
+  "Quit")
+  select opt in "${options[@]}"
+  do
+      echo ""
+      case $opt in
+          "Git clone master")
+              clone $VERSION
+              ;;
+          "Replace version number")
+              replaceversion $PREV_VERSION $VERSION
+              ;;
+          "Generate changelog")
+              changelog $VERSION
+              ;;
+          "Generate GitHub changelog")
+              changelog_github $VERSION
+              ;;
+          "Create PR")
+              git_commit $VERSION
+              ;;
+          "Sync with master")
+              git_sync
+              ;;
+          "Create tag")
+              git_tag $VERSION
+              ;;
+          "Build binaries")
+              build_binaries
+              ;;
+          "Upload the binaries and push to GitHub release page")
+              push $VERSION
+              ;;
+          "Clean")
+              clean $VERSION
+              ;;
+          "Quit")
+              clear
+              break
+              ;;
+          *) echo invalid option;;
+      esac
+      echo ""
+  done
+}
+
+main "$@"
