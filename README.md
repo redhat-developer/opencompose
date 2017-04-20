@@ -14,31 +14,42 @@ and [examples](https://github.com/redhat-developer/opencompose/blob/master/examp
 We are open to suggestions and contributions from the Kubernetes community as our project grows.
 Please send any PRs, issues or RFCs to improve this project.
 
-### Installation
-#### Binaries
+## Installation
+
+#### Binary installation
+
 You can retrieve binaries for Linux, macOS and Windows on our [GitHub release page](https://github.com/redhat-developer/opencompose/releases).
 
-##### Linux
-If you prefer to do it straight from CLI here's a one-liner for you:
-```bash
+```sh
+# Linux 
 curl -L https://github.com/redhat-developer/opencompose/releases/download/v0.1.0/opencompose-linux-amd64 -o opencompose
+
+# macOS
+curl -L https://github.com/redhat-developer/opencompose/releases/download/v0.1.0/opencompose-darwin-amd64 -o opencompose
+
+# Windows
+curl -L https://github.com/redhat-developer/opencompose/releases/download/v0.1.0/opencompose-windows-amd64.exe -o opencompose.exe
+
+chmod +x ./opencompose
+sudo mv ./opencompose /usr/local/bin/opencompose
 ```
-and if you want it installed system-wide:
-```bash
-sudo mv ./opencompose /usr/local/bin/
-```
-#### From source
-You can easily build OpenCompose tool from source. All you need is [Go](https://golang.org/dl/):
+
+#### Go (from source)
+
+A simple `go get` is all you need in order to develop OpenCompose from source.
+
 ```sh
 go get -u github.com/redhat-developer/opencompose
 ```
 
-Although `go get` installation works for just trying it out, if you want to submit bug reports you have to build it the supported way:
-```bash
-go get -u -d github.com/redhat-developer/opencompose
-make install -C $GOPATH/src/github.com/redhat-developer/opencompose/
+However, in order to file an issue, you may have to build it the supported way:
+
+```sh
+go get -u github.com/redhat-developer/opencompose
+make bin
 ```
-This will ensure proper output of `opencompose version`.
+
+In order to have a properly signed build (as denoted by `./opencompose version`).
 
 ### Example
 1) Create or download [hello-nginx.yaml](https://github.com/redhat-developer/opencompose/blob/master/examples/hello-nginx.yaml).
