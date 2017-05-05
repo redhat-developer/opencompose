@@ -15,3 +15,7 @@ func StringOrEmpty(p *string) string {
 func Int32Addr(i int32) *int32 {
 	return &i
 }
+
+func BoolAddr(b bool) *bool {
+	return &b
+}

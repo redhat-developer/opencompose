@@ -6,23 +6,35 @@ OpenCompose file example
 version: "0.1-dev"
 
 services:
-   name: foobar
-   replicas: 3
-   containers:
-   - image: foo/bar:tag
-     env:
-     - foo=bar
-     command: ["/bin/foobar"]
-     args:
-     - "-f"
-     - "/tmp/foobar"
-     ports:
-     - port: 8080:80
+- name: foobar
+  replicas: 3
+  containers:
+  - image: foo/bar:tag
+    env:
+    - foo=bar
+    command: ["/bin/foobar"]
+    args:
+    - "-f"
+    - "/tmp/foobar"
+    ports:
+    - port: 8080:80
+    mounts:
+    - volumeName: db
+      mountPath: /app/store
+      volumeSubPath: foo/bar
+      readOnly: true
+  emptyDirVolumes:
+  - name: temp
 
+volumes:
+- name: db
+  size: 5GiB
+  accessMode: ReadWriteMany
+  storageClass: fast
 ```
 
 
-OpenCompose file has two main sections *version* and *services*.
+OpenCompose file has three main sections *version*, *services* and *volumes*.
 
 ## version
 | type  | required |
@@ -47,6 +59,8 @@ Each service has name and list of the containers, while `replicas` can be option
   replicas: 4
   containers:
   - <ContainerSpec>
+  emptyDirVolumes:
+  - <EmptyDirVolumeSpec>
 ```
 
 #### name
@@ -71,6 +85,13 @@ Number of desired pods of this particluar service. This is an optional field. Th
 Each item in [containers](#containers) ([ContainerSpec](#containerspec)) defines one container.
 All the containers in container array for given service will be in same Pod.
 
+### emptyDirVolumes
+| type                                              | required |
+|---------------------------------------------------|----------|
+|array of [EmptyDirVolumeSpec](#emptydirvolumespec) |    no    |
+
+Each item in [emptyDirVolumes](#emptydirvolumes) ([EmptyDirVolumeSpec](#emptydirvolumespec)) defines a EmptyDir volume.
+These volumes will be shared among the containers in the service.
 
 ### ContainerSpec
 ```yml
@@ -84,6 +105,8 @@ All the containers in container array for given service will be in same Pod.
     - "-foo"
   ports:
     - <PortSpec>
+  mounts:
+    - <MountSpec>
 ```
 
 ContainerSpec describes an image to use, its arguments, which ports should be exposed and how.
@@ -138,6 +161,14 @@ This overrides default Command from Docker container image.
 |array of [PortSpec](#portspec) |  no      |
 
 This defines what ports will be exposed for communication.
+
+#### mounts
+
+| type                            | required |
+|---------------------------------|----------|
+|array of [MountSpec](#mountspec) |  no      |
+
+This defines what volumes will be mounted inside the container.
 
 
 ### PortSpec
@@ -199,3 +230,104 @@ Path based ingresses specify a path component that can be compared against a URL
 |                      | www.example.com      | Yes |
 | www.example.com      | www.example.com/test | Yes (Matched by the host, not the ingress) |
 |                      | www.example.com      | Yes |
+
+### MountSpec
+```yml
+# <MountSpec>
+  volumeName: db
+  mountPath: /app/store
+  volumeSubPath: foo/bar
+  readOnly: true
+```
+
+#### volumeName
+| type | required | possible values                                                                 |
+|------|----------|---------------------------------------------------------------------------------|
+|string|    yes   | should conform to the definition of a subdomain in DNS (RFC 1123), [details](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/identifiers.md). |
+
+Should match the name of volume from root level [`volumes`](#volumes) directive or `service` level [`emptyDirVolumes`](#emptydirvolumes) directive.
+
+#### mountPath
+| type | required |
+|------|----------|
+|string|    yes   |
+
+Absolute path within the container at which the volume should be mounted. Must not contain ':'.
+
+#### volumeSubPath
+| type | required | Default value      |
+|------|----------|--------------------|
+|string|    no    | "" (volume's root) |
+
+Path within the volume from which the container's volume should be mounted. Defaults to "" (volume's root).
+
+#### readOnly
+| type | required | Default value |
+|------|----------|---------------|
+|bool  |    no    | `false`       |
+
+Volume is mounted read-only if `true`, read-write otherwise.
+
+
+### EmptyDirVolumeSpec
+Describes one EmptyDir volume. This can be referenced from the [container mounts](#mountspec).
+
+```yml
+# <EmptyDirVolumeSpec>
+  name: tmp
+```
+
+#### name
+| type | required |
+|------|----------|
+|string|    yes   |
+
+Name of the EmptyDir volume. 
+
+
+## volumes
+`volumes` is main section that lists all the volumes that this OpenCompose file describes.
+`volumes` has to be array of [VolumeSpec](#volumespec).
+
+### VolumeSpec
+Describes one volume. This can be referenced from the [container mounts](#mountspec).
+
+Each volume has size defined, the accessmodes defined and storage class from where this should be read.
+
+```yml
+# <VolumeSpec>
+  name: db
+  size: 5GiB
+  accessMode: ReadWriteMany
+  storageClass: fast
+```
+
+#### name
+| type | required | possible values                                                                 |
+|------|----------|---------------------------------------------------------------------------------|
+|string|    yes   | should conform to the definition of a subdomain in DNS (RFC 1123), [details](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/identifiers.md). |
+
+Name of the volume.
+
+#### size
+| type | required | possible values                                                                   |
+|------|----------|-----------------------------------------------------------------------------------|
+|string|    yes   | must match the regular expression `'^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$` |
+
+Size of the volume created.
+
+#### accessMode
+
+| type | required | possible values                                      |
+|------|----------|------------------------------------------------------|
+|string|    yes   | `ReadWriteOnce` or `ReadOnlyMany` or `ReadWriteMany` |
+
+AccessMode contains the desired access mode the volume should have.
+
+#### storageClass
+
+| type | required |
+|------|----------|
+|string|    no    | 
+
+Name of the StorageClass that will back this volume.

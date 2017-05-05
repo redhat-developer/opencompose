@@ -5,6 +5,7 @@ import (
 
 	"github.com/redhat-developer/opencompose/pkg/object"
 	_ "k8s.io/client-go/pkg/api/install"
+	"k8s.io/client-go/pkg/api/resource"
 	api_v1 "k8s.io/client-go/pkg/api/v1"
 	_ "k8s.io/client-go/pkg/apis/extensions/install"
 	ext_v1beta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
@@ -139,14 +140,14 @@ func (t *Transformer) CreateIngresses(o *object.Service) ([]runtime.Object, erro
 }
 
 // Create k8s deployments for OpenCompose service
-func (t *Transformer) CreateDeployments(o *object.Service) ([]runtime.Object, error) {
+func (t *Transformer) CreateDeployments(s *object.Service) ([]runtime.Object, error) {
 	result := []runtime.Object{}
 
 	d := &ext_v1beta1.Deployment{
 		ObjectMeta: api_v1.ObjectMeta{
-			Name: o.Name,
+			Name: s.Name,
 			Labels: map[string]string{
-				"service": o.Name,
+				"service": s.Name,
 			},
 		},
 		Spec: ext_v1beta1.DeploymentSpec{
@@ -159,7 +160,7 @@ func (t *Transformer) CreateDeployments(o *object.Service) ([]runtime.Object, er
 			Template: api_v1.PodTemplateSpec{
 				ObjectMeta: api_v1.ObjectMeta{
 					Labels: map[string]string{
-						"service": o.Name,
+						"service": s.Name,
 					},
 				},
 				Spec: api_v1.PodSpec{},
@@ -167,11 +168,11 @@ func (t *Transformer) CreateDeployments(o *object.Service) ([]runtime.Object, er
 		},
 	}
 
-	d.Spec.Replicas = o.Replicas
+	d.Spec.Replicas = s.Replicas
 
-	for i, c := range o.Containers {
+	for i, c := range s.Containers {
 		kc := api_v1.Container{
-			Name:  fmt.Sprintf("%s-%d", o.Name, i),
+			Name:  fmt.Sprintf("%s-%d", s.Name, i),
 			Image: c.Image,
 		}
 
@@ -189,12 +190,90 @@ func (t *Transformer) CreateDeployments(o *object.Service) ([]runtime.Object, er
 			})
 		}
 
+		// TODO: It is assumed that the check is done about the existence of volume in root level volume section
+		for _, mount := range c.Mounts {
+			volumeMount := api_v1.VolumeMount{
+				Name:      mount.VolumeName,
+				ReadOnly:  mount.ReadOnly,
+				MountPath: mount.MountPath,
+				SubPath:   mount.VolumeSubPath,
+			}
+
+			kc.VolumeMounts = append(kc.VolumeMounts, volumeMount)
+
+			// if this mount does not exist in emptydir then this is coming from root level volumes directive
+			// if tomorrow we add support for ConfigMaps or Secrets mounted as volumes the check should be done
+			// here to see if it is not coming from configMaps or Secrets
+			if !s.EmptyDirVolumeExists(mount.VolumeName) {
+				volume := api_v1.Volume{
+					Name: mount.VolumeName,
+					VolumeSource: api_v1.VolumeSource{
+						PersistentVolumeClaim: &api_v1.PersistentVolumeClaimVolumeSource{
+							ClaimName: mount.VolumeName,
+						},
+					},
+				}
+				d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, volume)
+			}
+		}
+
 		d.Spec.Template.Spec.Containers = append(d.Spec.Template.Spec.Containers, kc)
+	}
+
+	// make entry of emptydir in deployment volume directive
+	for _, emptyDir := range s.EmptyDirVolumes {
+		volume := api_v1.Volume{
+			Name: emptyDir.Name,
+			VolumeSource: api_v1.VolumeSource{
+				EmptyDir: &api_v1.EmptyDirVolumeSource{},
+			},
+		}
+		d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, volume)
 	}
 
 	result = append(result, d)
 
 	return result, nil
+}
+
+// Create Kubernetes Persistent Volume Claim
+func (t *Transformer) CreatePVC(volume object.Volume) (runtime.Object, error) {
+
+	size, err := resource.ParseQuantity(volume.Size)
+	if err != nil {
+		return nil, err
+	}
+
+	pvc := &api_v1.PersistentVolumeClaim{
+		ObjectMeta: api_v1.ObjectMeta{
+			Name: volume.Name,
+		},
+		Spec: api_v1.PersistentVolumeClaimSpec{
+			Resources: api_v1.ResourceRequirements{
+				Requests: api_v1.ResourceList{
+					api_v1.ResourceStorage: size,
+				},
+			},
+		},
+	}
+
+	switch volume.AccessMode {
+	case "ReadWriteOnce":
+		pvc.Spec.AccessModes = []api_v1.PersistentVolumeAccessMode{api_v1.ReadWriteOnce}
+	case "ReadOnlyMany":
+		pvc.Spec.AccessModes = []api_v1.PersistentVolumeAccessMode{api_v1.ReadOnlyMany}
+	case "ReadWriteMany":
+		pvc.Spec.AccessModes = []api_v1.PersistentVolumeAccessMode{api_v1.ReadWriteMany}
+	default:
+		return nil, fmt.Errorf("invalid accessMode: %q, must be either %q, %q or %q", volume.AccessMode, "ReadWriteOnce", "ReadOnlyMany", "ReadWriteMany")
+	}
+
+	if volume.StorageClass != nil {
+		pvc.ObjectMeta.Annotations = make(map[string]string)
+		pvc.ObjectMeta.Annotations["volume.beta.kubernetes.io/storage-class"] = *volume.StorageClass
+	}
+
+	return pvc, nil
 }
 
 func (t *Transformer) TransformServices(services []object.Service) ([]runtime.Object, error) {
@@ -227,7 +306,19 @@ func (t *Transformer) TransformServices(services []object.Service) ([]runtime.Ob
 }
 
 func (t *Transformer) TransformVolumes(volumes []object.Volume) ([]runtime.Object, error) {
-	return nil, nil
+	result := []runtime.Object{}
+
+	for _, volume := range volumes {
+		// create pvc
+		object, err := t.CreatePVC(volume)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create PVC for volume %q: %s", volume.Name, err)
+		}
+
+		result = append(result, object)
+	}
+
+	return result, nil
 }
 
 func (t *Transformer) Transform(o *object.OpenCompose) ([]runtime.Object, error) {
