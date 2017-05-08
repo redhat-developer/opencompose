@@ -42,10 +42,8 @@ services:
 
 secrets:
     ci_secret:
-      travis:
-        file: /etc/travis.passwd
-      jenkins:
-        data: strongpassword@@
+    - file: /tmp/travis.password
+    - data: jenkins=strongpassword@@
 ```
 
 The syntax will look like -
@@ -53,17 +51,13 @@ The syntax will look like -
 ```yaml
 secrets:
   secret_name:
-    secret_key:
-      data: secret_value
-```
+  - file: <file path>
+  - data: <data key>=<data value>
+  - data: <data key>=<base64 encoded data>
+    type: base64
+  - data: <data key>=<data value>
+    type: plaintext (default)
 
-In order to retrieve a secret from a file, use -
-
-```yaml
-secrets:
-  secret_name:
-    secret_key:
-      file: <file path>
 ```
 
 ---
@@ -126,8 +120,7 @@ For the above mentioned syntax, the `secrets` definition at the container level 
 
 `secrets.<secret name>` is a _mandatory_ field of type _string_.
 
-`secrets.<secret name>.<secret key>` is a _mandatory_ field of type _string_. This can either by followed by the `file` or `data` directives, or be provided a _string_ containing the value of the secret key.
-
-`secrets.<secret name>.<secret key>.file` is an _optional_ field of type _string_.
-
-`secrets.<secret name>.<secret key>.data` is an _optional_ field of type _string_.
+`secrets.<secret name>.[]type` is a _mandatory_ filed with allowed keys `file` and `data`.
+`file` contains the path to the file containing secret data
+`data` contains plain text secret data by default along with a plain text key for the value, but a base64 encoded input can also be provided by providing a `type: base64` key with the data.
+All, `file`,`type`, `data` accept `string` values.
