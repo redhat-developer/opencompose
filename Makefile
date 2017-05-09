@@ -37,7 +37,7 @@ cross:
 	gox -osarch="darwin/amd64 linux/amd64 linux/arm windows/amd64" -output="bin/opencompose-{{.OS}}-{{.Arch}}" $(GO_LDFLAGS)
 
 .PHONY: checks
-checks: check-gofmt check-goimports check-govet
+checks: check-gofmt check-goimports check-govet check-golint
 
 .PHONY: check-gofmt
 check-gofmt:
@@ -52,6 +52,10 @@ check-goimports:
 .PHONY: check-govet
 check-govet:
 	go vet $(GO_PACKAGES)
+
+.PHONY: check-golint
+check-golint:
+	golint $(GO_PACKAGES)
 
 .PHONY: check-strip-vendor
 check-strip-vendor:
