@@ -175,6 +175,19 @@ func (raw *EnvVariable) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
+type Labels object.Labels
+
+func (lb *Labels) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	labelMap := make(map[string]string)
+	if err := unmarshal(&labelMap); err != nil {
+		return err
+	}
+
+	*lb = Labels(labelMap)
+
+	return nil
+}
+
 type ImageRef string
 
 // FIXME: implement ImageRef unmarshalling
@@ -264,6 +277,7 @@ type Service struct {
 	Containers      []Container      `yaml:"containers"`
 	Replicas        *int32           `yaml:"replicas,omitempty"`
 	EmptyDirVolumes []EmptyDirVolume `yaml:"emptyDirVolumes,omitempty"`
+	Labels          Labels           `yaml:"labels,omitempty"`
 }
 
 func (s *Service) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -389,7 +403,8 @@ func (d *Decoder) Decode(data []byte) (*object.OpenCompose, error) {
 	// convert services
 	for _, s := range v1.Services {
 		os := object.Service{
-			Name: string(s.Name),
+			Name:   string(s.Name),
+			Labels: object.Labels(s.Labels),
 		}
 
 		os.Replicas = s.Replicas

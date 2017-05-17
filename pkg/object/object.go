@@ -42,6 +42,8 @@ type Mount struct {
 	ReadOnly      bool
 }
 
+type Labels map[string]string
+
 type Container struct {
 	Image       string
 	Environment []EnvVariable
@@ -58,6 +60,7 @@ type Service struct {
 	Containers      []Container
 	Replicas        *int32
 	EmptyDirVolumes []EmptyDirVolume
+	Labels          Labels
 }
 
 type Volume struct {
@@ -160,6 +163,14 @@ func (s *Service) validate() error {
 	for _, e := range s.EmptyDirVolumes {
 		if err := validateName(e.Name); err != nil {
 			return fmt.Errorf("emptyDirVolume %q: invalid name, %v", e.Name, err)
+		}
+	}
+
+	// validate label values
+	for _, v := range s.Labels {
+		errString := validation.IsValidLabelValue(v)
+		if errString != nil {
+			return fmt.Errorf("Invalid label value: %v", errString)
 		}
 	}
 
