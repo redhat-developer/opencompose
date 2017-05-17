@@ -148,29 +148,26 @@ func (v *Port) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 type EnvVariable struct {
-	Key   string
-	Value string
+	Key   string `yaml:"name"`
+	Value string `yaml:"value"`
 }
 
 func (raw *EnvVariable) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var s string
-	err := unmarshal(&s)
+	type EnvVariableAlias EnvVariable
+	var st struct {
+		EnvVariableAlias `yaml:",inline"`
+		Leftovers        map[string]interface{} `yaml:",inline"` // Catches all undefined fields and must be empty after parsing.
+	}
+	err := unmarshal(&st)
 	if err != nil {
 		return err
 	}
 
-	splitSlice := strings.SplitN(s, "=", 2)
-
-	if len(splitSlice) != 2 {
-		return fmt.Errorf("failed to unmarshal environment variable '%s'", s)
+	if len(st.Leftovers) > 0 {
+		return util.NewExcessKeysErrorFromMap("Env", st.Leftovers)
 	}
 
-	if splitSlice[0] == "" {
-		return fmt.Errorf("failed to unmarshal environment variable '%s': no key", s)
-	}
-
-	raw.Key = strings.TrimSpace(splitSlice[0])
-	raw.Value = splitSlice[1]
+	*raw = EnvVariable(st.EnvVariableAlias)
 
 	return nil
 }
