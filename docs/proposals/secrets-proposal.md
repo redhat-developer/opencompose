@@ -27,41 +27,41 @@ To create a new secret, a top level `secrets` key can be used as follows:
 version: "0.1-dev"
 
 services:
-   name: foobar
+ - name: foobar
    containers:
    - image: foo/bar:tag
      ports:
      - port: 8080:80
      env:
-     - foo=bar
-     - travis_creds:
-         secret: ci_secret/travis
+     - name: foo
+       value: bar
+     - name: travis_creds
+       secretRef: ci_secret/travis
      mounts:
      - mountPath: /etc/jenkins.conf
-       secret: ci_secret/jenkins
+       secretRef: ci_secret/jenkins
 
 secrets:
-    ci_secret:
-    - file: /tmp/travis.password
-    - data: jenkins=strongpassword@@
+  - name: ci_secret
+    fromFile:
+    - /tmp/travis.password
+    fromLiteral:
+    - jenkins=strongpassword@@
 ```
 
 The syntax will look like -
 
 ```yaml
 secrets:
-  secret_name:
-  - file: <file path>
-  - data: <data key>=<data value>
-  - data: <data key>=<base64 encoded data>
-    type: base64
-  - data: <data key>=<data value>
-    type: plaintext (default)
-
+  - name: <secret name>
+    fromFile:
+    - <file path>
+    - <file path>
+    fromLiteral:
+    - <data key>=<base64 encoded data>
+    - <data key>=<base64 encoded data>
 ```
-
 ---
-
 
 To consume the above secret in OpenCompose, here is the proposed syntax.
 
@@ -79,11 +79,12 @@ services:
      ports:
      - port: 8080:80
      env:
-     - foo=bar
-     - db_user:
-         secret: kubesec/username
-     - db_pass:
-         secret: kubesec/password
+     - name: foo
+       value: bar
+     - name: db_user
+       secretRef: kubesec/username
+     - name: db_pass
+       secretRef: kubesec/password
 ```
 
 - ##### Consuming an already created Kubernetes secret in OpenCompose as a mounted volume
@@ -99,9 +100,9 @@ services:
      - port: 8080:80
      mounts:
      - mountPath: /var/secret_path/user_info
-       secret: kubesec/username
+       secretRef: kubesec/username
      - mountPath: /var/secret_path/pass_info
-       secret: kubesec/password
+       secretRef: kubesec/password
 ```
 
 ---
@@ -110,17 +111,16 @@ For the above mentioned syntax, the `secrets` definition at the container level 
 
 - environment variables
 
-`containers[].env[].secret` is an _optional_ field of type _string_. The string will consist of 2 parts separated by a `/`, the first being the secret name, and the second part being the key in the secret object.
+`containers.env.secretRef` is an _optional_ field of type _string_. The string will consist of 2 parts separated by a `/`, the first being the secret name, and the second part being the key in the secret object.
 
 - volume mounts
 
-`containers[].mounts[].secret` is an _optional_ field of type _string_. The string will consist of 2 parts separated by a `/`, the first being the secret name, and the second part being the key in the secret object.
+`containers.mounts.secretRef` is an _optional_ field of type _string_. The string will consist of 2 parts separated by a `/`, the first being the secret name, and the second part being the key in the secret object.
 
 - top level secrets definition
 
-`secrets.<secret name>` is a _mandatory_ field of type _string_.
+`secrets.name` is a _mandatory_ field of type _string_, which sets the name of the secret.
 
-`secrets.<secret name>.[]type` is a _mandatory_ filed with allowed keys `file` and `data`.
-`file` contains the path to the file containing secret data
-`data` contains plain text secret data by default along with a plain text key for the value, but a base64 encoded input can also be provided by providing a `type: base64` key with the data.
-All, `file`,`type`, `data` accept `string` values.
+`secrets.fromFile` is an _optional_ field which takes an _array_ of file paths that contain the secret data.
+
+`secrets.fromLiteral` is an _optional_ field which takes an _array_ of strings, of the form _plain text key=base64 encoded secret data_
