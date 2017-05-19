@@ -5,10 +5,14 @@ services:
   containers:
   - image: mariadb:10
     env:
-    - MYSQL_ROOT_PASSWORD=rootpasswd
-    - MYSQL_DATABASE=wordpress
-    - MYSQL_USER=wordpress
-    - MYSQL_PASSWORD=wordpress
+    - name: MYSQL_ROOT_PASSWORD
+      value: rootpasswd
+    - name: MYSQL_DATABASE
+      value: wordpress
+    - name: MYSQL_USER
+      value: wordpress
+    - name: MYSQL_PASSWORD
+      value: wordpress
     ports:
     - port: 3306
 
@@ -16,10 +20,14 @@ services:
   containers:
   - image: wordpress:4
     env:
-    - WORDPRESS_DB_HOST=database:3306
-    - WORDPRESS_DB_PASSWORD=wordpress
-    - WORDPRESS_DB_USER=wordpress
-    - WORDPRESS_DB_NAME=wordpress
+    - name: WORDPRESS_DB_HOST
+      value: database:3306
+    - name: WORDPRESS_DB_PASSWORD
+      value: wordpress
+    - name: WORDPRESS_DB_USER
+      value: wordpress
+    - name: WORDPRESS_DB_NAME
+      value: wordpress
     ports:
     - port: 80
       type: external

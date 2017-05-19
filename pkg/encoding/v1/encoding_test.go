@@ -232,15 +232,47 @@ func TestEnvVariable_UnmarshalYAML(t *testing.T) {
 		RawEnvVar string
 		EnvVar    *EnvVariable
 	}{
-		{true, "'KEY=value string '", &EnvVariable{Key: "KEY", Value: "value string "}},
-		{true, "KEY= value", &EnvVariable{Key: "KEY", Value: " value"}},
-		{true, "KEY =value", &EnvVariable{Key: "KEY", Value: "value"}},
-		{true, "KEY==value", &EnvVariable{Key: "KEY", Value: "=value"}},
-		{true, "KEY=", &EnvVariable{Key: "KEY", Value: ""}},
-		{false, "KEY", nil},
-		{false, "=KEYvalue", nil},
-		{false, "=KEY=value", nil},
-		{false, "=KEY=value=", nil},
+		{
+			true,
+			`
+name: "KEY"
+value: "value string "
+`,
+			&EnvVariable{Key: "KEY", Value: "value string "},
+		},
+		{
+			true,
+			`
+name: "KEY"
+value: " value"
+`,
+			&EnvVariable{Key: "KEY", Value: " value"},
+		},
+		{
+			true,
+			`
+name: " KEY"
+value: "value"
+`,
+			&EnvVariable{Key: " KEY", Value: "value"},
+		},
+
+		{
+			true,
+			`
+name: KEY
+value: ""
+`,
+			&EnvVariable{Key: "KEY", Value: ""},
+		},
+		{
+			false,
+			`
+name: KEY
+key: extra_field
+`,
+			nil,
+		},
 	}
 
 	for _, tt := range tests {
@@ -674,8 +706,10 @@ services:
   containers:
   - image: tomaskral/kompose-demo-frontend:test
     env:
-    - KEY=value
-    - KEY2=value2
+    - name: KEY
+      value: value
+    - name: KEY2
+      value: value2
     ports:
     - port: 5000:80
     - port: 5001:81
@@ -865,8 +899,10 @@ services:
   containers:
   - image: tomaskral/kompose-demo-frontend:test
     env:
-    - KEY=value
-    - KEY2=value2
+	- name: KEY
+	  value: value
+	- name: KEY2
+	  value: value2
     ports:
     - port: 5000:80
     - port: 5001:81
@@ -882,8 +918,10 @@ services:
   containers:
   - image: tomaskral/kompose-demo-frontend:test
 	env:
-	- KEY=value
-	- KEY2=value2
+	- name: KEY
+	  value: value
+	- name: KEY2
+	  value: value2
 	ports:
 	- port: 5000:80
 	- port: 5001:81
@@ -892,6 +930,64 @@ volumes:
   size: 1Gi
   mode: ReadWriteOnce
   EXCESSKEY: some value
+`,
+			nil,
+		},
+		{
+			false, `
+version: 0.1-dev
+services:
+- name: frontend
+  containers:
+  - image: tomaskral/kompose-demo-frontend:test
+    env:
+    - name: KEY
+      value: value
+    - name: KEY2
+`,
+			nil,
+		},
+		{
+			false, `
+version: 0.1-dev
+services:
+- name: frontend
+  containers:
+  - image: tomaskral/kompose-demo-frontend:test
+    env:
+    - name: KEY
+      value: value
+    - value: value
+`,
+			nil,
+		},
+		{
+			false, `
+version: 0.1-dev
+services:
+- name: frontend
+  containers:
+  - image: tomaskral/kompose-demo-frontend:test
+    env:
+    - name: KEY
+      value: value
+    - name:
+      value: value
+`,
+			nil,
+		},
+		{
+			false, `
+version: 0.1-dev
+services:
+- name: frontend
+  containers:
+  - image: tomaskral/kompose-demo-frontend:test
+    env:
+    - name: KEY
+      value: value
+    - name: KEY2
+      value:
 `,
 			nil,
 		},
@@ -912,8 +1008,10 @@ services:
   containers:
   - image: tomaskral/kompose-demo-frontend:test
     env:
-    - KEY=value
-    - KEY2=value2
+    - name: KEY
+      value: value
+    - name: KEY2
+      value: value2
     ports:
     - port: 5000:80
     - port: 5001:81

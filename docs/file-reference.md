@@ -13,7 +13,8 @@ services:
   containers:
   - image: foo/bar:tag
     env:
-    - foo=bar
+    - name: foo
+      value: bar
     command: ["/bin/foobar"]
     args:
     - "-f"
@@ -109,7 +110,8 @@ These volumes will be shared among the containers in the service.
 # <ContainerSpec>
   image: foo/bar:tag
   env:
-  - VARIABLE=value
+  - name: VARIABLE
+    value: value
   command:
     - /foo/bar
   args:
@@ -132,7 +134,7 @@ Name of the image that container will be started from.
 #### env
 | type            | required |
 |-----------------|----------|
-|array of strings |    no    |
+|array of [EnvSpec](#envspec) |    no    |
 
 List of environment variables to set in the container.
 Each string has to be formated as `variable_name=value`.
@@ -181,6 +183,30 @@ This defines what ports will be exposed for communication.
 
 This defines what volumes will be mounted inside the container.
 
+
+### EnvSpec
+```yml
+# <EnvSpec>
+  name: DB_USER
+  value: bob
+```
+
+Inside the containers, the environment variables will generally be visible as,
+DB_USER=bob
+
+#### name
+| type | required |
+|------|----------|
+|string|    yes   |
+
+This is a string which defines the name of the environment variable being set.
+
+#### value
+| type | required |
+|------|----------|
+|string|    yes   |
+
+This is string which defines the value of the environment variable being set.
 
 ### PortSpec
 ```yml
