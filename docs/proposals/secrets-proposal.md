@@ -43,10 +43,13 @@ services:
 
 secrets:
   - name: ci_secret
-    fromFile:
-    - /tmp/travis.password
-    fromLiteral:
-    - jenkins=strongpassword@@
+    data:
+    - key: travis
+      file: /tmp/travis.password
+    - key: jenkins
+      plaintext: strongpassword@@
+    - key: db
+      base64: YWRtaW4=
 ```
 
 The syntax will look like -
@@ -54,12 +57,13 @@ The syntax will look like -
 ```yaml
 secrets:
   - name: <secret name>
-    fromFile:
-    - <file path>
-    - <file path>
-    fromLiteral:
-    - <data key>=<base64 encoded data>
-    - <data key>=<base64 encoded data>
+    data:
+    - key: <secret data key>
+      plaintext: <secret data value in plaintext>
+    - key: <secret data key>
+      base64: <base64 encoded secret data value>
+    - key: <secret data key>
+      file: <path to file containing secret data>
 ```
 ---
 
@@ -121,6 +125,12 @@ For the above mentioned syntax, the `secrets` definition at the container level 
 
 `secrets.name` is a _mandatory_ field of type _string_, which sets the name of the secret.
 
-`secrets.fromFile` is an _optional_ field which takes an _array_ of file paths that contain the secret data.
+`secrets.data` is a _mandatory_ field, which contains the following information about the secret.
 
-`secrets.fromLiteral` is an _optional_ field which takes an _array_ of strings, of the form _plain text key=base64 encoded secret data_
+`secrets.data.key` is a _mandatory_ field of type _string_, which sets the the secret data key in the secret.
+
+`secrets.data.file` is an _optional_ field of type _string_ which takes the path of the file that contain the secret data.
+
+`secrets.base64` is an _optional_ field which takes a _string_ which is base64 encoded as secret data.
+
+`secrets.plaintext` is an _optional_ field which takes a _string_ which contains the secret data in plaintext.
