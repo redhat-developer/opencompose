@@ -217,7 +217,7 @@ func (t *Transformer) CreateDeployments(s *object.Service) ([]runtime.Object, er
 		// TODO: It is assumed that the check is done about the existence of volume in root level volume section
 		for _, mount := range c.Mounts {
 			volumeMount := api_v1.VolumeMount{
-				Name:      mount.VolumeName,
+				Name:      mount.VolumeRef,
 				ReadOnly:  mount.ReadOnly,
 				MountPath: mount.MountPath,
 				SubPath:   mount.VolumeSubPath,
@@ -228,12 +228,12 @@ func (t *Transformer) CreateDeployments(s *object.Service) ([]runtime.Object, er
 			// if this mount does not exist in emptydir then this is coming from root level volumes directive
 			// if tomorrow we add support for ConfigMaps or Secrets mounted as volumes the check should be done
 			// here to see if it is not coming from configMaps or Secrets
-			if !s.EmptyDirVolumeExists(mount.VolumeName) {
+			if !s.EmptyDirVolumeExists(mount.VolumeRef) {
 				volume := api_v1.Volume{
-					Name: mount.VolumeName,
+					Name: mount.VolumeRef,
 					VolumeSource: api_v1.VolumeSource{
 						PersistentVolumeClaim: &api_v1.PersistentVolumeClaimVolumeSource{
-							ClaimName: mount.VolumeName,
+							ClaimName: mount.VolumeRef,
 						},
 					},
 				}

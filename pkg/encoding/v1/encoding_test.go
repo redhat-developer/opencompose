@@ -307,13 +307,13 @@ func TestMount_UnmarshalYAML(t *testing.T) {
 		{
 			"All fields given",
 			true, `
-volumeName: test-volume
+volumeRef: test-volume
 mountPath: /foo/bar
 volumeSubPath: some/path
 readOnly: true
 `,
 			&Mount{
-				VolumeName:    "test-volume",
+				VolumeRef:     "test-volume",
 				MountPath:     "/foo/bar",
 				VolumeSubPath: goutil.StringAddr("some/path"),
 				ReadOnly:      goutil.BoolAddr(true),
@@ -323,19 +323,19 @@ readOnly: true
 		{
 			"Optional fields not given",
 			true, `
-volumeName: test-volume
+volumeRef: test-volume
 mountPath: /foo/bar
 `,
 			&Mount{
-				VolumeName: "test-volume",
-				MountPath:  "/foo/bar",
+				VolumeRef: "test-volume",
+				MountPath: "/foo/bar",
 			},
 		},
 
 		{
 			"Giving bool value as 'foobar', should fail",
 			false, `
-volumeName: test-volume
+volumeRef: test-volume
 mountPath: /foo/bar
 readOnly: foobar
 `,
@@ -345,7 +345,7 @@ readOnly: foobar
 		{
 			"Giving an extra field which does not exist",
 			false, `
-volumeName: test-volume
+volumeRef: test-volume
 mountPath: /foo/bar
 foo: bar
 `,
@@ -362,12 +362,12 @@ foo: bar
 		{
 			"Not giving a required field",
 			true, `
-volumeName: test-volume
+volumeRef: test-volume
 readOnly: true
 `,
 			&Mount{
-				VolumeName: "test-volume",
-				ReadOnly:   goutil.BoolAddr(true),
+				VolumeRef: "test-volume",
+				ReadOnly:  goutil.BoolAddr(true),
 			}}}
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
@@ -538,7 +538,7 @@ name: frontend
 containers:
 - image: tomaskral/kompose-demo-frontend:test
   mounts:
-  - volumeName: test-volume
+  - volumeRef: test-volume
     mountPath: /foo/bar
     volumeSubPath: some/path
     readOnly: true
@@ -550,7 +550,7 @@ containers:
 						Image: "tomaskral/kompose-demo-frontend:test",
 						Mounts: []Mount{
 							{
-								VolumeName:    "test-volume",
+								VolumeRef:     "test-volume",
 								MountPath:     "/foo/bar",
 								VolumeSubPath: goutil.StringAddr("some/path"),
 								ReadOnly:      goutil.BoolAddr(true),
@@ -714,7 +714,7 @@ services:
     - port: 5000:80
     - port: 5001:81
     mounts:
-    - volumeName: test-volume
+    - volumeRef: test-volume
       mountPath: /foo/bar
       volumeSubPath: some/path
       readOnly: true
@@ -761,7 +761,7 @@ volumes:
 								},
 								Mounts: []object.Mount{
 									{
-										VolumeName:    "test-volume",
+										VolumeRef:     "test-volume",
 										MountPath:     "/foo/bar",
 										VolumeSubPath: "some/path",
 										ReadOnly:      true,
@@ -1101,7 +1101,7 @@ services:
   containers:
   - image: tomaskral/nonroot-nginx
     mounts:
-    - volumeName: test-volume
+    - volumeRef: test-volume
       readOnly: true
 `,
 			nil,
