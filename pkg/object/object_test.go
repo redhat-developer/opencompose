@@ -101,7 +101,7 @@ func TestContainer_Validate(t *testing.T) {
 			&Container{
 				Mounts: []Mount{
 					{
-						VolumeName: "invalid_mount_name",
+						VolumeRef: "invalid_mount_name",
 					},
 				},
 			},
@@ -112,8 +112,8 @@ func TestContainer_Validate(t *testing.T) {
 			&Container{
 				Mounts: []Mount{
 					{
-						VolumeName: "test",
-						MountPath:  "foo/bar",
+						VolumeRef: "test",
+						MountPath: "foo/bar",
 					},
 				},
 			},
@@ -124,12 +124,12 @@ func TestContainer_Validate(t *testing.T) {
 			&Container{
 				Mounts: []Mount{
 					{
-						VolumeName: "test1",
-						MountPath:  "/foo/bar",
+						VolumeRef: "test1",
+						MountPath: "/foo/bar",
 					},
 					{
-						VolumeName: "test2",
-						MountPath:  "/foo/bar",
+						VolumeRef: "test2",
+						MountPath: "/foo/bar",
 					},
 				},
 			},

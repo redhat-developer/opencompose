@@ -14,7 +14,7 @@ services:
     ports:
     - port: 3306
     mounts:
-    - volumeName: database
+    - volumeRef: database
       mountPath: /var/lib/mysql
 
 - name: web

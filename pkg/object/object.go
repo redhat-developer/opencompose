@@ -36,7 +36,7 @@ type EnvVariable struct {
 }
 
 type Mount struct {
-	VolumeName    string
+	VolumeRef     string
 	MountPath     string
 	VolumeSubPath string
 	ReadOnly      bool
@@ -119,20 +119,20 @@ func (c *Container) validate() error {
 	allMounts := make(map[string]string)
 	// validate Mounts
 	for _, mount := range c.Mounts {
-		// validate volumeName
-		if err := validateName(mount.VolumeName); err != nil {
-			return fmt.Errorf("mount %q: invalid name, %v", mount.VolumeName, err)
+		// validate volumeRef
+		if err := validateName(mount.VolumeRef); err != nil {
+			return fmt.Errorf("mount %q: invalid name, %v", mount.VolumeRef, err)
 		}
 
 		// mountPath should be absolute
 		if !path.IsAbs(mount.MountPath) {
-			return fmt.Errorf("mount %q: mountPath %q: is not absolute path", mount.VolumeName, mount.MountPath)
+			return fmt.Errorf("mount %q: mountPath %q: is not absolute path", mount.VolumeRef, mount.MountPath)
 		}
 		// mountPath should not collide, which means you should not do multiple mounts in same place
 		if v, ok := allMounts[mount.MountPath]; ok {
-			return fmt.Errorf("mount %q: mountPath %q: cannot have same mountPath as %q", mount.VolumeName, mount.MountPath, v)
+			return fmt.Errorf("mount %q: mountPath %q: cannot have same mountPath as %q", mount.VolumeRef, mount.MountPath, v)
 		}
-		allMounts[mount.MountPath] = mount.VolumeName
+		allMounts[mount.MountPath] = mount.VolumeRef
 
 		// validate volumeSubPath
 		// TODO: if there is someway to do it
@@ -224,9 +224,9 @@ func (o *OpenCompose) Validate() error {
 		// or emptydirvolumes, error out if not found anywhere
 		for cno, container := range service.Containers {
 			for _, mount := range container.Mounts {
-				if !o.VolumeExists(mount.VolumeName) && !service.EmptyDirVolumeExists(mount.VolumeName) {
+				if !o.VolumeExists(mount.VolumeRef) && !service.EmptyDirVolumeExists(mount.VolumeRef) {
 					return fmt.Errorf("volume mount %q in service %q in container#%d does not correspond to either 'root level volume' or 'emptydir volume'",
-						mount.VolumeName, service.Name, cno+1)
+						mount.VolumeRef, service.Name, cno+1)
 				}
 			}
 		}

@@ -22,7 +22,7 @@ services:
     ports:
     - port: 8080:80
     mounts:
-    - volumeName: db
+    - volumeRef: db
       mountPath: /app/store
       volumeSubPath: foo/bar
       readOnly: true
@@ -271,13 +271,13 @@ Path based ingresses specify a path component that can be compared against a URL
 ### MountSpec
 ```yml
 # <MountSpec>
-  volumeName: db
+  volumeRef: db
   mountPath: /app/store
   volumeSubPath: foo/bar
   readOnly: true
 ```
 
-#### volumeName
+#### volumeRef
 | type | required | possible values                                                                 |
 |------|----------|---------------------------------------------------------------------------------|
 |string|    yes   | should conform to the definition of a subdomain in DNS (RFC 1123), [details](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/identifiers.md). |

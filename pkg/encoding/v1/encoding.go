@@ -190,8 +190,8 @@ type ImageRef string
 // FIXME: implement ImageRef unmarshalling
 
 type Mount struct {
-	VolumeName ResourceName `yaml:"volumeName"`
-	MountPath  string       `yaml:"mountPath"`
+	VolumeRef ResourceName `yaml:"volumeRef"`
+	MountPath string       `yaml:"mountPath"`
 	// these are optional fields so making them as pointer because it helps
 	// to identify whether these fields were given by user or not
 	// if these are not pointer then it is hard to identify what was given
@@ -428,8 +428,8 @@ func (d *Decoder) Decode(data []byte) (*object.OpenCompose, error) {
 			// convert mounts
 			for _, m := range c.Mounts {
 				mount := object.Mount{
-					VolumeName: string(m.VolumeName),
-					MountPath:  string(m.MountPath),
+					VolumeRef: string(m.VolumeRef),
+					MountPath: string(m.MountPath),
 				}
 
 				if m.VolumeSubPath != nil {
