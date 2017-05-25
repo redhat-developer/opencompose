@@ -5,7 +5,7 @@
 The goal of OpenCompose is to make it easier for developers to on-board to Kubernetes.
 OpenCompose is a declarative higher level abstraction for specific Kubernetes resources.
 
-Very simple idea, isn't it? 
+Very simple idea, isn't it?
 A developer shouldn't have to learn various Kubernetes concepts just to test and deploy their applications.
 Focus on the application that is being developed.
 
@@ -21,7 +21,7 @@ Please send any PRs, issues or RFCs to improve this project.
 You can retrieve binaries for Linux, macOS and Windows on our [GitHub release page](https://github.com/redhat-developer/opencompose/releases).
 
 ```sh
-# Linux 
+# Linux
 curl -L https://github.com/redhat-developer/opencompose/releases/download/v0.1.0/opencompose-linux-amd64 -o opencompose
 
 # macOS
@@ -110,3 +110,15 @@ To make it permanent add this line to your `~/.zshrc`.
 
 ### Community
 We always welcome your feedback and thoughts on the project! Come and join our mailing list - [opencompose [at] googlegroups.com](https://groups.google.com/forum/#!forum/opencompose). We also hangout on [slack.k8s.io](http://slack.k8s.io/) ([#sig-apps](https://kubernetes.slack.com/messages/sig-apps/)).
+
+### RoadMap
+
+We are planning to add following features to OpenCompose. Following list is in the decreasing priority of tasks. Each element is linked with the corresponding issue where the progress of these things can be tracked.
+
+- [secrets](https://github.com/redhat-developer/opencompose/issues/43)
+- [healthchecks](https://github.com/redhat-developer/opencompose/issues/24)
+- [resources](https://github.com/redhat-developer/opencompose/issues/123)
+- [configmap](https://github.com/redhat-developer/opencompose/issues/124)
+- [jobs](https://github.com/redhat-developer/opencompose/issues/44)
+- [initcontainers](https://github.com/redhat-developer/opencompose/issues/126)
+
