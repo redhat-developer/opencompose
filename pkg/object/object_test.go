@@ -134,6 +134,42 @@ func TestContainer_Validate(t *testing.T) {
 				},
 			},
 		},
+		{
+			"passing '=' in environment variable key",
+			false,
+			&Container{
+				Environment: []EnvVariable{
+					{
+						Key:   "ke=y",
+						Value: "value",
+					},
+				},
+			},
+		},
+		{
+			"passing '=' in environment variable value",
+			false,
+			&Container{
+				Environment: []EnvVariable{
+					{
+						Key:   "key",
+						Value: "va=lue",
+					},
+				},
+			},
+		},
+		{
+			"passing a valid environment variable",
+			true,
+			&Container{
+				Environment: []EnvVariable{
+					{
+						Key:   "key",
+						Value: "value",
+					},
+				},
+			},
+		},
 	}
 
 	for _, test := range tests {

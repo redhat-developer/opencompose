@@ -107,14 +107,30 @@ func validateName(name string) error {
 	return nil
 }
 
+func (e *EnvVariable) validate() error {
+	// TODO: add more validation tests besides checking for '='
+	if strings.Contains(e.Key, "=") {
+		return fmt.Errorf("Illegal character '=' in environment variable key: %v", e.Key)
+	}
+
+	if strings.Contains(e.Value, "=") {
+		return fmt.Errorf("Illegal character '=' in environment variable value: %v", e.Value)
+	}
+	return nil
+}
+
 func (c *Container) validate() error {
 
 	// validate image name
 	// TODO: implement me
-	// validate Environment
-	// TODO: implement me
 	// validate Ports
 	// TODO: implement me
+
+	for _, env := range c.Environment {
+		if err := env.validate(); err != nil {
+			return fmt.Errorf("failed to validate environment variable: %v", err)
+		}
+	}
 
 	allMounts := make(map[string]string)
 	// validate Mounts
