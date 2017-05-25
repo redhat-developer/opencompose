@@ -1,0 +1,69 @@
+version: '0.1-dev'
+
+services:
+- name: database
+  containers:
+  - image: mariadb:10
+    env:
+    - name: MYSQL_ROOT_PASSWORD
+      value: rootpasswd
+    - name: MYSQL_DATABASE
+      value: wordpress
+    - name: MYSQL_USER
+      value: wordpress
+    - name: MYSQL_PASSWORD
+      value: wordpress
+    ports:
+    - port: 3306
+    mounts:
+    - volumeRef: database
+      mountPath: /var/lib/mysql
+    health:
+      livenessProbe:
+        exec:
+          command:
+          - mysqladmin
+          - ping
+        initialDelaySeconds: 30
+        timeoutSeconds: 5
+      readinessProbe:
+        exec:
+          command:
+          - mysqladmin
+          - ping
+        initialDelaySeconds: 5
+        timeoutSeconds: 1
+
+- name: web
+  containers:
+  - image: wordpress:4
+    env:
+    - name: WORDPRESS_DB_HOST
+      value: database:3306
+    - name: WORDPRESS_DB_PASSWORD
+      value: wordpress
+    - name: WORDPRESS_DB_USER
+      value: wordpress
+    - name: WORDPRESS_DB_NAME
+      value: wordpress
+    ports:
+    - port: 80
+      type: external
+    health:
+      livenessProbe:
+        httpGet:
+          path: /
+          port: 80
+        initialDelaySeconds: 120
+        timeoutSeconds: 5
+      readinessProbe:
+        httpGet:
+          path: /
+          port: 80
+        initialDelaySeconds: 5
+        timeoutSeconds: 1
+
+volumes:
+- name: database
+  size: 100Mi
+  accessMode: ReadWriteOnce

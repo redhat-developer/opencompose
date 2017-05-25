@@ -4,6 +4,8 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+
+	"gopkg.in/yaml.v2"
 )
 
 type S struct {
@@ -132,6 +134,62 @@ func TestValidateRequiredFields(t *testing.T) {
 		if !tt.Succeed {
 			t.Errorf("Expected %#v to fail!", tt.Value)
 			continue
+		}
+	}
+}
+
+func TestInterfaceToJSON(t *testing.T) {
+	tests := []struct {
+		input  string
+		output map[string]interface{}
+	}{
+		{
+			input:  `foo: bar`,
+			output: map[string]interface{}{"foo": "bar"},
+		},
+		{
+			input: `
+one:
+- 1
+- 2
+- 3
+two: four`,
+			output: map[string]interface{}{
+				"two": "four",
+				"one": []interface{}{1, 2, 3},
+			},
+		},
+		{
+			input: `
+one:
+  two:
+    three: four
+five: six
+seven:
+- eight
+- nine`,
+			output: map[string]interface{}{
+				"one": map[string]interface{}{
+					"two": map[string]interface{}{
+						"three": "four",
+					},
+				},
+				"five":  "six",
+				"seven": []interface{}{"eight", "nine"},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		var input interface{}
+		err := yaml.Unmarshal([]byte(test.input), &input)
+		if err != nil {
+			t.Fatalf("failed unmarshalling: %v", err)
+		}
+		gotOutput := InterfaceToJSON(input)
+
+		if !reflect.DeepEqual(test.output, gotOutput) {
+			t.Errorf("Expected: %#v\nGot: %#v", test.output, gotOutput)
 		}
 	}
 }

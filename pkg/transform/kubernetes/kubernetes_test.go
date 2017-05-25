@@ -669,6 +669,75 @@ func TestTransformer_CreateDeployments(t *testing.T) {
 				},
 			},
 		},
+		{
+			"When valid health value given",
+			true,
+			&object.Service{
+				Name: name,
+				Containers: []object.Container{
+					{
+						Image: image,
+						Health: object.Health{
+							ReadinessProbe: &api_v1.Probe{
+								Handler: api_v1.Handler{
+									HTTPGet: &api_v1.HTTPGetAction{
+										Port: intstr.FromInt(8080),
+										Path: "/healthz",
+										HTTPHeaders: []api_v1.HTTPHeader{
+											{
+												Name:  "X-Custom-Header",
+												Value: "Awesome",
+											},
+										},
+									},
+								},
+								InitialDelaySeconds: 3,
+								PeriodSeconds:       3,
+							},
+						},
+					},
+				},
+			},
+			[]runtime.Object{
+				&ext_v1beta1.Deployment{
+					ObjectMeta: sMeta,
+					Spec: ext_v1beta1.DeploymentSpec{
+						Strategy: strategy,
+						Template: api_v1.PodTemplateSpec{
+							ObjectMeta: api_v1.ObjectMeta{
+								Labels: map[string]string{
+									"service": name,
+								},
+							},
+							Spec: api_v1.PodSpec{
+								Containers: []api_v1.Container{
+									{
+										Name:  podname,
+										Image: image,
+										ReadinessProbe: &api_v1.Probe{
+											Handler: api_v1.Handler{
+												HTTPGet: &api_v1.HTTPGetAction{
+													Port: intstr.FromInt(8080),
+													Path: "/healthz",
+													HTTPHeaders: []api_v1.HTTPHeader{
+														{
+															Name:  "X-Custom-Header",
+															Value: "Awesome",
+														},
+													},
+												},
+											},
+											InitialDelaySeconds: 3,
+											PeriodSeconds:       3,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	transformer := Transformer{}
@@ -688,7 +757,7 @@ func TestTransformer_CreateDeployments(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(kd, test.K8sDeployments) {
-				t.Errorf("Expected: %#v\nGot: %#v\n", spew.Sprint(test.K8sDeployments), spew.Sprint(kd))
+				t.Errorf("Expected: %s\nGot: %s\n", spew.Sprint(test.K8sDeployments), spew.Sprint(kd))
 				return
 			}
 		})

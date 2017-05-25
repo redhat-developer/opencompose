@@ -122,3 +122,23 @@ func ValidateRequiredFields(i interface{}) error {
 
 	return nil
 }
+
+// Converts the yaml read into empty interface to JSONified
+// empty interface, this can be used to marshal into actual
+// JSON and from there if you want it you can read it into
+// Took help from https://stackoverflow.com/a/40737676/3848679
+func InterfaceToJSON(i interface{}) interface{} {
+	switch x := i.(type) {
+	case map[interface{}]interface{}:
+		m2 := map[string]interface{}{}
+		for k, v := range x {
+			m2[k.(string)] = InterfaceToJSON(v)
+		}
+		return m2
+	case []interface{}:
+		for i, v := range x {
+			x[i] = InterfaceToJSON(v)
+		}
+	}
+	return i
+}
