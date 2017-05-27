@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"testing"
 
+	"encoding/base64"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/redhat-developer/opencompose/pkg/goutil"
 	"github.com/redhat-developer/opencompose/pkg/object"
@@ -23,6 +25,69 @@ var (
 		},
 	}
 )
+
+func TestTransformer_CreateSecret(t *testing.T) {
+	secretName := "secretname"
+	plaintextValue := "secretValue"
+	base64Value := "d29yZHByZXNz"
+	decodedBase64Value, err := base64.StdEncoding.DecodeString(base64Value)
+	if err != nil {
+		t.Errorf("Unable to decode the provided base64 encoded value: %v", base64Value)
+	}
+	tests := []struct {
+		Succeed          bool
+		Secret           *object.Secret
+		KubernetesSecret runtime.Object
+	}{
+		{
+			true,
+			&object.Secret{
+				Name: secretName,
+				Data: []object.SecretData{
+					{
+						Key:       "secretKey1",
+						Plaintext: &plaintextValue,
+					},
+					{
+						Key:    "secretKey2",
+						Base64: &base64Value,
+					},
+				},
+			},
+			&api_v1.Secret{
+				ObjectMeta: api_v1.ObjectMeta{
+					Name: secretName,
+				},
+				Data: map[string][]byte{
+					"secretKey1": []byte(plaintextValue),
+					"secretKey2": decodedBase64Value,
+				},
+			},
+		},
+	}
+
+	transformer := Transformer{}
+	for _, tt := range tests {
+		ks, err := transformer.CreateSecret(tt.Secret)
+		if err != nil {
+			if tt.Succeed {
+				t.Errorf("Failed to create secret from %+v: %s", tt.Secret, err)
+			}
+			continue
+		}
+
+		if !tt.Succeed {
+			t.Errorf("Expected service %+v to fail!", tt.Secret)
+			continue
+		}
+
+		if !reflect.DeepEqual(ks, tt.KubernetesSecret) {
+			t.Errorf("Expected\n%+v\n, got\n%+v", tt.KubernetesSecret, ks)
+			continue
+		}
+	}
+
+}
 
 func TestTransformer_CreateServices(t *testing.T) {
 	sSelector := map[string]string{

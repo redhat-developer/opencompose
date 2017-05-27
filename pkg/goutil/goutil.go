@@ -19,3 +19,12 @@ func Int32Addr(i int32) *int32 {
 func BoolAddr(b bool) *bool {
 	return &b
 }
+
+func IsElementInArray(e interface{}, a []interface{}) bool {
+	for _, element := range a {
+		if element == e {
+			return true
+		}
+	}
+	return false
+}

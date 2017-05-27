@@ -68,34 +68,37 @@ func GetValidatedObject(v *viper.Viper, cmd *cobra.Command, out, outerr io.Write
 	var ocObjects []*object.OpenCompose
 
 	for _, file := range files {
-		var data []byte
 		var err error
+		var in object.Input
 
 		// Check if the passed resource points to STDIN or not
 		if file == "-" {
-			data, err = ioutil.ReadAll(os.Stdin)
+			in.STDIN = true
+			in.Data, err = ioutil.ReadAll(os.Stdin)
 			if err != nil {
 				return nil, fmt.Errorf("unable to read from stdin: %s", err)
 			}
 		} else if strings.HasPrefix(file, "http://") || strings.HasPrefix(file, "https://") {
 			// Check if the passed resource is a URL or not
 			// TODO: add test for validating this against an actual resource on the web
-			data, err = pkgutil.GetURLData(file, retryAttempts)
+			in.URL = &file
+			in.Data, err = pkgutil.GetURLData(file, retryAttempts)
 			if err != nil {
 				return nil, fmt.Errorf("an error occurred while fetching data from the url %v: %v", file, err)
 			}
 		} else {
-			data, err = ioutil.ReadFile(file)
+			in.FilePath = &file
+			in.Data, err = ioutil.ReadFile(file)
 			if err != nil {
 				return nil, fmt.Errorf("unable to read file '%s': %s", file, err)
 			}
 		}
-		decoder, err := encoding.GetDecoderFor(data)
+		decoder, err := encoding.GetDecoderFor(in.Data)
 		if err != nil {
 			return nil, fmt.Errorf("could not find decoder for resource '%s': %s", file, err)
 		}
 
-		o, err := decoder.Decode(data)
+		o, err := decoder.Decode(&in)
 		if err != nil {
 			return nil, fmt.Errorf("could not unmarshal data for file '%s': %s", file, err)
 		}

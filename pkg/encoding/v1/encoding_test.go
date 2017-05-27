@@ -6,6 +6,8 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 
+	"path/filepath"
+
 	"github.com/redhat-developer/opencompose/pkg/goutil"
 	"github.com/redhat-developer/opencompose/pkg/object"
 	"gopkg.in/yaml.v2"
@@ -239,6 +241,144 @@ path: "/admin"
 	}
 }
 
+func TestSecret_UnmarshalYAML(t *testing.T) {
+	secretName := "secretName"
+	dataKey := "dataKey"
+	secretValue := "secretValue"
+	tests := []struct {
+		Name      string
+		Succeed   bool
+		RawSecret string
+		Secret    *Secret
+	}{
+		{
+			"Valid secret passed",
+			true,
+			`
+name: secretName
+data:
+- key: dataKey
+  plaintext: secretValue
+`,
+			&Secret{
+				Name: ResourceName(secretName),
+				Data: []SecretData{
+					{
+						Key:       dataKey,
+						Plaintext: &secretValue,
+					},
+				},
+			},
+		},
+		{
+			"Secret.Data as bool",
+			false,
+			`
+name: secretName
+data: true
+`,
+			nil,
+		},
+		{
+			"Extra fields",
+			false,
+			`
+name: secretName
+excess: key
+data:
+- key: dataKey
+  plaintext: secretValue
+`,
+			nil,
+		},
+	}
+	for _, tt := range tests {
+		var sec Secret
+		err := yaml.Unmarshal([]byte(tt.RawSecret), &sec)
+		if err != nil {
+			if tt.Succeed {
+				t.Errorf("Failed to unmarshal %#v; error %#v", tt.RawSecret, err)
+			}
+			continue
+		}
+
+		if !tt.Succeed {
+			t.Errorf("Expected %#v to fail!", tt.RawSecret)
+			continue
+		}
+
+		if !reflect.DeepEqual(sec, *tt.Secret) {
+			t.Errorf("Expected %#v, got %#v", *tt.Secret, sec)
+			continue
+		}
+	}
+}
+
+func TestSecretData_UnmarshalYAML(t *testing.T) {
+	dataKey := "dataKey"
+	secretValue := "secretValue"
+	tests := []struct {
+		Name          string
+		Succeed       bool
+		RawSecretData string
+		SecretData    *SecretData
+	}{
+		{
+			"Valid secret data passed",
+			true,
+			`
+key: dataKey
+plaintext: secretValue
+`,
+			&SecretData{
+				Key:       dataKey,
+				Plaintext: &secretValue,
+			},
+		},
+		{
+			"omitting optional fields",
+			true,
+			`
+key: dataKey
+`,
+			&SecretData{
+				Key: dataKey,
+			},
+		},
+
+		{
+			"extra fields",
+			false,
+			`
+key: dataKey
+plaintext: secretValue
+excess: key
+`,
+			nil,
+		},
+	}
+	for _, tt := range tests {
+		var sec SecretData
+		err := yaml.Unmarshal([]byte(tt.RawSecretData), &sec)
+		if err != nil {
+			if tt.Succeed {
+				t.Errorf("Failed to unmarshal %#v; error %#v", tt.RawSecretData, err)
+			}
+			continue
+		}
+
+		if !tt.Succeed {
+			t.Errorf("Expected %#v to fail!", tt.RawSecretData)
+			continue
+		}
+
+		if !reflect.DeepEqual(sec, *tt.SecretData) {
+			t.Errorf("Expected %#v, got %#v", *tt.SecretData, sec)
+			continue
+		}
+	}
+}
+
 func TestEnvVariable_UnmarshalYAML(t *testing.T) {
 	tests := []struct {
 		Name      string
@@ -253,7 +393,7 @@ func TestEnvVariable_UnmarshalYAML(t *testing.T) {
 name: "KEY"
 value: "value string "
 `,
-			&EnvVariable{Key: "KEY", Value: "value string "},
+			&EnvVariable{Key: "KEY", Value: goutil.StringAddr("value string ")},
 		},
 		{
 			"Success value is given with space",
@@ -262,7 +402,7 @@ value: "value string "
 name: "KEY"
 value: " value"
 `,
-			&EnvVariable{Key: "KEY", Value: " value"},
+			&EnvVariable{Key: "KEY", Value: goutil.StringAddr(" value")},
 		},
 		{
 			"Success key is given with space",
@@ -271,7 +411,7 @@ value: " value"
 name: " KEY"
 value: "value"
 `,
-			&EnvVariable{Key: " KEY", Value: "value"},
+			&EnvVariable{Key: " KEY", Value: goutil.StringAddr("value")},
 		},
 
 		{
@@ -281,7 +421,7 @@ value: "value"
 name: KEY
 value: ""
 `,
-			&EnvVariable{Key: "KEY", Value: ""},
+			&EnvVariable{Key: "KEY", Value: goutil.StringAddr("")},
 		},
 		{
 			"Failed value is not string",
@@ -318,6 +458,7 @@ key: extra_field
 }
 
 func TestMount_UnmarshalYAML(t *testing.T) {
+	var volRef ResourceName = "test-volume"
 	tests := []struct {
 		Name     string
 		Succeed  bool
@@ -333,7 +474,7 @@ volumeSubPath: some/path
 readOnly: true
 `,
 			&Mount{
-				VolumeRef:     "test-volume",
+				VolumeRef:     &volRef,
 				MountPath:     "/foo/bar",
 				VolumeSubPath: goutil.StringAddr("some/path"),
 				ReadOnly:      goutil.BoolAddr(true),
@@ -347,7 +488,7 @@ volumeRef: test-volume
 mountPath: /foo/bar
 `,
 			&Mount{
-				VolumeRef: "test-volume",
+				VolumeRef: &volRef,
 				MountPath: "/foo/bar",
 			},
 		},
@@ -386,7 +527,7 @@ volumeRef: test-volume
 readOnly: true
 `,
 			&Mount{
-				VolumeRef: "test-volume",
+				VolumeRef: &volRef,
 				ReadOnly:  goutil.BoolAddr(true),
 			}}}
 	for _, test := range tests {
@@ -502,6 +643,7 @@ key4: value4
 }
 
 func TestService_UnmarshalYAML(t *testing.T) {
+	var volRef ResourceName = "test-volume"
 	tests := []struct {
 		Name       string
 		Succeed    bool
@@ -574,7 +716,7 @@ containers:
 						Image: "tomaskral/kompose-demo-frontend:test",
 						Mounts: []Mount{
 							{
-								VolumeRef:     "test-volume",
+								VolumeRef:     &volRef,
 								MountPath:     "/foo/bar",
 								VolumeSubPath: goutil.StringAddr("some/path"),
 								ReadOnly:      goutil.BoolAddr(true),
@@ -719,6 +861,11 @@ func TestDecoder_Decode(t *testing.T) {
 	// TODO: make better tests w.r.t excess keys in all possible places
 	// TODO: add checking for proper error because tests can fail for other than expected reasons
 
+	absPath, err := filepath.Abs("../mysql_root_password.txt")
+	if err != nil {
+		t.Errorf("Unable to get absolute path to run the test")
+	}
+
 	tests := []struct {
 		Succeed     bool
 		File        string
@@ -763,11 +910,11 @@ volumes:
 								Environment: []object.EnvVariable{
 									{
 										Key:   "KEY",
-										Value: "value",
+										Value: goutil.StringAddr("value"),
 									},
 									{
 										Key:   "KEY2",
-										Value: "value2",
+										Value: goutil.StringAddr("value2"),
 									},
 								},
 								Ports: []object.Port{
@@ -787,7 +934,7 @@ volumes:
 								},
 								Mounts: []object.Mount{
 									{
-										VolumeRef:     "test-volume",
+										VolumeRef:     goutil.StringAddr("test-volume"),
 										MountPath:     "/foo/bar",
 										VolumeSubPath: "some/path",
 										ReadOnly:      true,
@@ -969,20 +1116,6 @@ services:
     env:
     - name: KEY
       value: value
-    - name: KEY2
-`,
-			nil,
-		},
-		{
-			false, `
-version: 0.1-dev
-services:
-- name: frontend
-  containers:
-  - image: tomaskral/kompose-demo-frontend:test
-    env:
-    - name: KEY
-      value: value
     - value: value
 `,
 			nil,
@@ -999,21 +1132,6 @@ services:
       value: value
     - name:
       value: value
-`,
-			nil,
-		},
-		{
-			false, `
-version: 0.1-dev
-services:
-- name: frontend
-  containers:
-  - image: tomaskral/kompose-demo-frontend:test
-    env:
-    - name: KEY
-      value: value
-    - name: KEY2
-      value:
 `,
 			nil,
 		},
@@ -1054,11 +1172,11 @@ volumes: []
 								Environment: []object.EnvVariable{
 									{
 										Key:   "KEY",
-										Value: "value",
+										Value: goutil.StringAddr("value"),
 									},
 									{
 										Key:   "KEY2",
-										Value: "value2",
+										Value: goutil.StringAddr("value2"),
 									},
 								},
 								Ports: []object.Port{
@@ -1182,12 +1300,129 @@ services:
 				},
 			},
 		},
+		{
+			true,
+			`
+version: 0.1-dev
+services:
+- name: helloworld
+  containers:
+  - image: tomaskral/nonroot-nginx
+    ports:
+    - port: 8080
+      type: external
+secrets:
+- name: dbcreds
+  data:
+  - key: root_password
+    file: ../mysql_root_password.txt
+`,
+			&object.OpenCompose{
+				Version: Version,
+				Services: []object.Service{
+					{
+						Name: "helloworld",
+						Containers: []object.Container{
+							{
+								Image: "tomaskral/nonroot-nginx",
+								Ports: []object.Port{
+									{
+										Port: object.PortMapping{
+											ContainerPort: 8080,
+											ServicePort:   8080,
+										},
+										Type: object.PortType_External,
+									},
+								},
+							},
+						},
+					},
+				},
+				Secrets: []object.Secret{
+					{
+						Name: "dbcreds",
+						Data: []object.SecretData{
+							{
+								Key:  "root_password",
+								File: &absPath,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			true,
+			`
+version: 0.1-dev
+services:
+- name: helloworld
+  containers:
+  - image: tomaskral/nonroot-nginx
+    env:
+    - name: ROOT_PASSWORD
+      secretRef: dbcreds/root_password
+    mounts:
+    - secretRef: dbcreds/mysql_password
+      mountPath: /foo/bar
+secrets:
+- name: dbcreds
+  data:
+  - key: root_password
+    plaintext: dataValue
+  - key: mysql_password
+    base64: d29yZHByZXNz
+`,
+			&object.OpenCompose{
+				Version: Version,
+				Services: []object.Service{
+					{
+						Name: "helloworld",
+						Containers: []object.Container{
+							{
+								Image: "tomaskral/nonroot-nginx",
+								Environment: []object.EnvVariable{
+									{
+										Key:       "ROOT_PASSWORD",
+										SecretRef: goutil.StringAddr("dbcreds/root_password"),
+									},
+								},
+								Mounts: []object.Mount{
+									{
+										MountPath: "/foo/bar",
+										SecretRef: goutil.StringAddr("dbcreds/mysql_password"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Secrets: []object.Secret{
+					{
+						Name: "dbcreds",
+						Data: []object.SecretData{
+							{
+								Key:       "root_password",
+								Plaintext: goutil.StringAddr("dataValue"),
+							},
+							{
+								Key:    "mysql_password",
+								Base64: goutil.StringAddr("d29yZHByZXNz"),
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run("", func(t *testing.T) {
-			data := []byte(tt.File)
-			openCompose, err := (&Decoder{}).Decode(data)
+			in := &object.Input{
+				STDIN: true,
+				Data:  []byte(tt.File),
+			}
+			openCompose, err := (&Decoder{}).Decode(in)
 			if err != nil {
 				if tt.Succeed {
 					t.Fatalf("Failed to unmarshal %#v; error %v", tt.File, err)

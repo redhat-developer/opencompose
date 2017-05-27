@@ -8,7 +8,7 @@ import (
 )
 
 type Decoder interface {
-	Decode([]byte) (*object.OpenCompose, error)
+	Decode(*object.Input) (*object.OpenCompose, error)
 }
 
 func GetDecoderFor(data []byte) (Decoder, error) {
