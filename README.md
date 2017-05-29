@@ -22,13 +22,13 @@ You can retrieve binaries for Linux, macOS and Windows on our [GitHub release pa
 
 ```sh
 # Linux 
-curl -L https://github.com/redhat-developer/opencompose/releases/download/v0.1.0/opencompose-linux-amd64 -o opencompose
+curl -L https://github.com/redhat-developer/opencompose/releases/download/v0.2.0/opencompose-linux-amd64 -o opencompose
 
 # macOS
-curl -L https://github.com/redhat-developer/opencompose/releases/download/v0.1.0/opencompose-darwin-amd64 -o opencompose
+curl -L https://github.com/redhat-developer/opencompose/releases/download/v0.2.0/opencompose-darwin-amd64 -o opencompose
 
 # Windows
-curl -L https://github.com/redhat-developer/opencompose/releases/download/v0.1.0/opencompose-windows-amd64.exe -o opencompose.exe
+curl -L https://github.com/redhat-developer/opencompose/releases/download/v0.2.0/opencompose-windows-amd64.exe -o opencompose.exe
 
 chmod +x ./opencompose
 sudo mv ./opencompose /usr/local/bin/opencompose
