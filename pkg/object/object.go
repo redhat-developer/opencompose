@@ -119,6 +119,24 @@ func (e *EnvVariable) validate() error {
 	return nil
 }
 
+func (m *Mount) validate() error {
+
+	// validate volumeRef
+	if err := validateName(m.VolumeRef); err != nil {
+		return fmt.Errorf("mount %q: invalid name, %v", m.VolumeRef, err)
+	}
+
+	// mountPath should be absolute
+	if !path.IsAbs(m.MountPath) {
+		return fmt.Errorf("mount %q: mountPath %q: is not absolute path", m.VolumeRef, m.MountPath)
+	}
+
+	// validate volumeSubPath
+	// TODO: if there is someway to do it
+
+	return nil
+}
+
 func (c *Container) validate() error {
 
 	// validate image name
@@ -132,28 +150,19 @@ func (c *Container) validate() error {
 		}
 	}
 
-	allMounts := make(map[string]string)
 	// validate Mounts
+	allMounts := make(map[string]string)
 	for _, mount := range c.Mounts {
-		// validate volumeRef
-		if err := validateName(mount.VolumeRef); err != nil {
-			return fmt.Errorf("mount %q: invalid name, %v", mount.VolumeRef, err)
+		if err := mount.validate(); err != nil {
+			return fmt.Errorf("failed to validate mount: %v", err)
 		}
 
-		// mountPath should be absolute
-		if !path.IsAbs(mount.MountPath) {
-			return fmt.Errorf("mount %q: mountPath %q: is not absolute path", mount.VolumeRef, mount.MountPath)
-		}
 		// mountPath should not collide, which means you should not do multiple mounts in same place
 		if v, ok := allMounts[mount.MountPath]; ok {
 			return fmt.Errorf("mount %q: mountPath %q: cannot have same mountPath as %q", mount.VolumeRef, mount.MountPath, v)
 		}
 		allMounts[mount.MountPath] = mount.VolumeRef
-
-		// validate volumeSubPath
-		// TODO: if there is someway to do it
 	}
-
 	return nil
 }
 
