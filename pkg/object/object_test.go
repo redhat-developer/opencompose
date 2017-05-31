@@ -337,6 +337,64 @@ func TestVolume_Validate(t *testing.T) {
 	}
 }
 
+func TestMount_Validate(t *testing.T) {
+	tests := []struct {
+		Name            string
+		ExpectedSuccess bool
+		Mount           *Mount
+	}{
+		{
+			"invalid name",
+			false,
+			&Mount{
+				VolumeRef: "invalid_mount_name",
+				MountPath: "/foo/bar",
+			},
+		},
+		{
+			"valid name",
+			true,
+			&Mount{
+				VolumeRef: "validmountname",
+				MountPath: "/foo/bar",
+			},
+		},
+		{
+			"not an absolute path",
+			false,
+			&Mount{
+				VolumeRef: "test",
+				MountPath: "foo/bar",
+			},
+		},
+		{
+			"absolute path",
+			true,
+			&Mount{
+				VolumeRef: "test",
+				MountPath: "/foo/bar",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+			err := test.Mount.validate()
+			if test.ExpectedSuccess && err != nil {
+				// failing condition
+				t.Fatalf("Expected success but failed as: %v", err)
+			} else if !test.ExpectedSuccess && err == nil {
+				// failing condition
+				t.Fatal("Expected failure but passed.")
+			} else if !test.ExpectedSuccess && err != nil {
+				// passing condition
+				t.Logf("Failed with error: %v", err)
+			}
+		})
+	}
+
+}
+
 func TestOpenCompose_Validate(t *testing.T) {
 	name := "test-service"
 	image := "test-image"
