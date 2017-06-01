@@ -312,8 +312,9 @@ func (sd *SecretData) validate() error {
 		return fmt.Errorf("Please set one of plaintext, base64 or file field for the secret key: %v", sd.Key)
 	case 2, 3:
 		return fmt.Errorf("Only one of plaintext, base64 or file fields can be set at a time for the secret key: %v", sd.Key)
+	default:
+		return fmt.Errorf("Something went wrong with counting the secret fields for the secret key: %v", sd.Key)
 	}
-	return nil
 }
 
 func validateSecretRef(sRef *string, oSec *[]Secret) error {
