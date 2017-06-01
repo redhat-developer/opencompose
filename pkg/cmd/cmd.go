@@ -19,8 +19,8 @@ func NewOpenComposeCommand(in io.Reader, out, outerr io.Writer) *cobra.Command {
 	// Parent command to which all subcommands are added.
 	rootCmd := &cobra.Command{
 		Use:   "opencompose",
-		Short: "opencompose is a tool to transform OpenCompose files into Kubernetes (and OpenShift) artifacts",
-		Long:  "opencompose is a tool to transform OpenCompose files into Kubernetes (and OpenShift) definitions\n\nFind more information at https://github.com/redhat-developer/opencompose.",
+		Short: "Deploy OpenCompose yaml files to Kubernetes environments.",
+		Long:  `OpenCompose is a tool to deploy OpenCompose specific yaml files to Kubernetes (and OpenShift) environments.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := cmd.Help(); err != nil {
 				return err
