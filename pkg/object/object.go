@@ -94,6 +94,12 @@ type OpenCompose struct {
 	Secrets  []Secret
 }
 
+// This struct is not a part of the OpenCompose spec, but this is used to
+// store the data input metadata which is used in other parts of the code
+// to make decisions.
+// For instance, this is being set in cmd.GetValidatedObject(), and getting
+// in v1.Decode() to convert the relative path of the secret file from the
+// OpenCompose file, and convert it to an absolute path
 type Input struct {
 	Data     []byte
 	STDIN    bool

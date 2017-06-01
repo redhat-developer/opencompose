@@ -16,8 +16,6 @@ import (
 	ext_v1beta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/runtime"
 	"k8s.io/client-go/pkg/util/intstr"
-	kapi "k8s.io/kubernetes/pkg/api"
-	kvalidation "k8s.io/kubernetes/pkg/api/validation"
 )
 
 type Transformer struct{}
@@ -391,19 +389,8 @@ func (t *Transformer) CreateSecret(secret *object.Secret) (runtime.Object, error
 		Data: kubeSecretData,
 	}
 
-	validationErrors := kvalidation.ValidateSecret(&kapi.Secret{
-		ObjectMeta: kapi.ObjectMeta{
-			Name: sec.ObjectMeta.Name,
-			// Putting namespace as default here because ValidateSecret errors
-			// out if no namespace is provided
-			Namespace: "default",
-		},
-		Data: sec.Data,
-	})
-
-	if len(validationErrors) != 0 {
-		return nil, fmt.Errorf("failed to validate the generated secret object: %v", validationErrors)
-	}
+	// TODO: add secret validation here
+	// TODO: refer https://github.com/redhat-developer/opencompose/issues/139
 
 	return sec, nil
 }
