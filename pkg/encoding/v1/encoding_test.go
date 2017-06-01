@@ -246,24 +246,52 @@ func TestEnvVariable_UnmarshalYAML(t *testing.T) {
 		RawEnvVar string
 		EnvVar    *EnvVariable
 	}{
-		{"Success Value is string", true, `
+		{
+			"Success Value is given",
+			true,
+			`
 name: "KEY"
 value: "value string "
-`, &EnvVariable{Key: "KEY", Value: "value string "}},
-
-		{"Success Space after equal sign", true, `
+`,
+			&EnvVariable{Key: "KEY", Value: "value string "},
+		},
+		{
+			"Success value is given with space",
+			true,
+			`
 name: "KEY"
 value: " value"
-`, &EnvVariable{Key: "KEY", Value: " value"}},
+`,
+			&EnvVariable{Key: "KEY", Value: " value"},
+		},
+		{
+			"Success key is given with space",
+			true,
+			`
+name: " KEY"
+value: "value"
+`,
+			&EnvVariable{Key: " KEY", Value: "value"},
+		},
 
-		{"Success Space before equal sign", false, "KEY =value", &EnvVariable{Key: "KEY", Value: "value"}},
-
-		{"Success Double equal sign given", false, "KEY==value", &EnvVariable{Key: "KEY", Value: "=value"}},
-		{"Success Value is empty", false, "KEY = value", &EnvVariable{Key: "KEY", Value: ""}},
-		{"Success Value not provided", false, "KEY", nil},
-		{"Failed Env variable when =KEYvalue", false, "=KEYvalue", nil},
-		{"Failed Env variable when =KEY=value", false, "=KEY=value", nil},
-		{"Failed Env variable when =KEY=value=", false, "=KEY=value=", nil},
+		{
+			"Failed value is not given",
+			true,
+			`
+name: KEY
+value: ""
+`,
+			&EnvVariable{Key: "KEY", Value: ""},
+		},
+		{
+			"Failed value is not string",
+			false,
+			`
+name: KEY
+key: extra_field
+`,
+			nil,
+		},
 	}
 
 	for _, tt := range tests {
