@@ -21,38 +21,40 @@ func UriPathAddrFromString(s string) *PathRegex {
 
 func TestPortMapping_UnmarshalYAML(t *testing.T) {
 	tests := []struct {
+		Name    string
 		Succeed bool
 		RawPort string
 		Port    *PortMapping
 	}{
-		{true, "5000", &PortMapping{ContainerPort: 5000, ServicePort: 5000}},
-		{true, "5000:80", &PortMapping{ContainerPort: 5000, ServicePort: 80}},
-		{true, "", &PortMapping{}}, // UnmarshalYAML won't be even called for empty strings
-		{false, "x5000", nil},
-		{false, "5000:", nil},
-		{false, "x5000:", nil},
-		{false, ":80", nil},
-		{false, ":80x", nil},
-		{false, "x:80x", nil},
-		{false, "x:80", nil},
-		{false, ":8080:80", nil},
-		{false, "x:8080:80", nil},
-		{false, "x:x8080:x80", nil},
-		{false, ":8080:x80", nil},
-		{false, ":8080:80:", nil},
-		{false, "8080:80:", nil},
-		{false, "8080:80::", nil},
-		{false, ":", nil},
-		{false, "::", nil},
-		{false, ":::", nil},
-		{false, "::::", nil},
-		{false, ":::::", nil},
-		{false, "::1:80", nil},
-		{false, "::1:8080:80", nil},
-		{false, "::1:8080:80:", nil},
+		{"Only ContainerPort", true, "5000", &PortMapping{ContainerPort: 5000, ServicePort: 5000}},
+		{"ContainerPort:ServicePort", true, "5000:80", &PortMapping{ContainerPort: 5000, ServicePort: 80}},
+		{"Empty Portmapping", true, "", &PortMapping{}}, // UnmarshalYAML won't be even called for empty strings
+		{"Failed Portmapping x5000", false, "x5000", nil},
+		{"Failed Portmapping 5000", false, "5000:", nil},
+		{"Failed Portmapping x5000:", false, "x5000:", nil},
+		{"Failed Portmapping :80", false, ":80", nil},
+		{"Failed Portmapping :80x", false, ":80x", nil},
+		{"Failed Portmapping x:80x", false, "x:80x", nil},
+		{"Failed Portmapping x:80", false, "x:80", nil},
+		{"Failed Portmapping :8080:80", false, ":8080:80", nil},
+		{"Failed Portmapping x:8080:80", false, "x:8080:80", nil},
+		{"Failed Portmapping x:x8080:x80", false, "x:x8080:x80", nil},
+		{"Failed Portmapping :8080:x80", false, ":8080:x80", nil},
+		{"Failed Portmapping :8080:80:", false, ":8080:80:", nil},
+		{"Failed Portmapping 8080:80:", false, "8080:80:", nil},
+		{"Failed Portmapping 8080:80::", false, "8080:80::", nil},
+		{"Failed Portmapping :", false, ":", nil},
+		{"Failed Portmapping ::", false, "::", nil},
+		{"Failed Portmapping :::", false, ":::", nil},
+		{"Failed Portmapping ::::", false, "::::", nil},
+		{"Failed Portmapping :::::", false, ":::::", nil},
+		{"Failed Portmapping ::1:80", false, "::1:80", nil},
+		{"Failed Portmapping ::1:8080:80", false, "::1:8080:80", nil},
+		{"Failed Portmapping ::1:8080:80:", false, "::1:8080:80:", nil},
 	}
 
 	for _, tt := range tests {
+		t.Log("Test case: ", tt.Name)
 		var pm PortMapping
 		err := yaml.Unmarshal([]byte(tt.RawPort), &pm)
 		if err != nil {
@@ -76,25 +78,27 @@ func TestPortMapping_UnmarshalYAML(t *testing.T) {
 
 func TestPortType_UnmarshalYAML(t *testing.T) {
 	tests := []struct {
+		Name        string
 		Succeed     bool
 		RawPortType string
 		PortType    object.PortType
 	}{
-		{true, "", object.PortType_Internal}, // UnmarshalYAML won't be even called for empty strings -> default value
-		{true, "internal", object.PortType_Internal},
-		{true, "external", object.PortType_External},
-		{false, "'internal '", 0},
-		{false, "' internal'", 0},
-		{false, "' internal '", 0},
-		{false, "'external '", 0},
-		{false, "' external'", 0},
-		{false, "' external '", 0},
-		{false, "'something '", 0},
-		{false, "' something'", 0},
-		{false, "' something '", 0},
+		{"Success Empty Porttype", true, "", object.PortType_Internal}, // UnmarshalYAML won't be even called for empty strings -> default value
+		{"Success Internal Porttype", true, "internal", object.PortType_Internal},
+		{"Success External Porttype", true, "external", object.PortType_External},
+		{"Failed Porttype - 'internal '", false, "'internal '", 0},
+		{"Failed Porttype - ' internal'", false, "' internal'", 0},
+		{"Failed Porttype - ' internal '", false, "' internal '", 0},
+		{"Failed Porttype - 'external '", false, "'external '", 0},
+		{"Failed Porttype - ' external'", false, "' external'", 0},
+		{"Failed Porttype - ' external '", false, "' external '", 0},
+		{"Failed Porttype - 'something '", false, "'something '", 0},
+		{"Failed Porttype - ' something'", false, "' something'", 0},
+		{"Failed Porttype - ' something '", false, "' something '", 0},
 	}
 
 	for _, tt := range tests {
+		t.Log("Test case: ", tt.Name)
 		var pt PortType
 		err := yaml.Unmarshal([]byte(tt.RawPortType), &pt)
 		if err != nil {
@@ -118,12 +122,14 @@ func TestPortType_UnmarshalYAML(t *testing.T) {
 
 func TestPort_UnmarshalYAML(t *testing.T) {
 	tests := []struct {
+		Name    string
 		Succeed bool
 		RawPort string
 		Port    Port
 	}{
-		{true, "", Port{}}, // UnmarshalYAML won't be even called for empty strings -> default value
+		{"Empty Port mapping", true, "", Port{}}, // UnmarshalYAML won't be even called for empty strings -> default value
 		{
+			"Port mapping with empty host",
 			true,
 			`
 port: 5000:80
@@ -136,6 +142,7 @@ host: ""
 			},
 		},
 		{
+			"Port mapping with hostname",
 			true,
 			`
 port: 5000:80
@@ -148,6 +155,7 @@ host: "subdomain.127.0.0.1.nip.io"
 			},
 		},
 		{
+			"Port mapping with path and empty host",
 			false, //you have to specify host
 			`
 port: 5000:80
@@ -156,6 +164,7 @@ path: "/admin"
 			Port{},
 		},
 		{
+			"Port mapping with empty path",
 			false, //you have to specify host
 			`
 port: 5000:80
@@ -164,6 +173,7 @@ path: ""
 			Port{},
 		},
 		{
+			"Port mapping with empty host as well path",
 			true,
 			`
 port: 5000:80
@@ -177,6 +187,7 @@ path: ""
 			},
 		},
 		{
+			"Port mapping with path and empty host",
 			true,
 			`
 port: 5000:80
@@ -190,6 +201,7 @@ path: "/admin"
 			},
 		},
 		{
+			"Port mapping with host and Path",
 			true,
 			`
 port: 5000:80
@@ -205,7 +217,8 @@ path: "/admin"
 	}
 
 	for _, tt := range tests {
-		t.Run("", func(t *testing.T) {
+		t.Log("Test case: ", tt.Name)
+		t.Run(tt.Name, func(t *testing.T) {
 			var p Port
 			err := yaml.Unmarshal([]byte(tt.RawPort), &p)
 			if err != nil {
@@ -228,54 +241,33 @@ path: "/admin"
 
 func TestEnvVariable_UnmarshalYAML(t *testing.T) {
 	tests := []struct {
+		Name      string
 		Succeed   bool
 		RawEnvVar string
 		EnvVar    *EnvVariable
 	}{
-		{
-			true,
-			`
+		{"Success Value is string", true, `
 name: "KEY"
 value: "value string "
-`,
-			&EnvVariable{Key: "KEY", Value: "value string "},
-		},
-		{
-			true,
-			`
+`, &EnvVariable{Key: "KEY", Value: "value string "}},
+
+		{"Success Space after equal sign", true, `
 name: "KEY"
 value: " value"
-`,
-			&EnvVariable{Key: "KEY", Value: " value"},
-		},
-		{
-			true,
-			`
-name: " KEY"
-value: "value"
-`,
-			&EnvVariable{Key: " KEY", Value: "value"},
-		},
+`, &EnvVariable{Key: "KEY", Value: " value"}},
 
-		{
-			true,
-			`
-name: KEY
-value: ""
-`,
-			&EnvVariable{Key: "KEY", Value: ""},
-		},
-		{
-			false,
-			`
-name: KEY
-key: extra_field
-`,
-			nil,
-		},
+		{"Success Space before equal sign", false, "KEY =value", &EnvVariable{Key: "KEY", Value: "value"}},
+
+		{"Success Double equal sign given", false, "KEY==value", &EnvVariable{Key: "KEY", Value: "=value"}},
+		{"Success Value is empty", false, "KEY = value", &EnvVariable{Key: "KEY", Value: ""}},
+		{"Success Value not provided", false, "KEY", nil},
+		{"Failed Env variable when =KEYvalue", false, "=KEYvalue", nil},
+		{"Failed Env variable when =KEY=value", false, "=KEY=value", nil},
+		{"Failed Env variable when =KEY=value=", false, "=KEY=value=", nil},
 	}
 
 	for _, tt := range tests {
+		t.Log("Test case: ", tt.Name)
 		var envVar EnvVariable
 		err := yaml.Unmarshal([]byte(tt.RawEnvVar), &envVar)
 		if err != nil {
@@ -370,6 +362,7 @@ readOnly: true
 				ReadOnly:  goutil.BoolAddr(true),
 			}}}
 	for _, test := range tests {
+		t.Log("Test case: ", test.Name)
 		t.Run(test.Name, func(t *testing.T) {
 			var mount Mount
 			err := yaml.Unmarshal([]byte(test.RawMount), &mount)
@@ -394,23 +387,26 @@ readOnly: true
 func TestEmptyDirVolume_UnmarshalYAML(t *testing.T) {
 
 	tests := []struct {
+		Name        string
 		Succeed     bool
 		RawEmptyDir string
 		EmptyDir    *EmptyDirVolume
 	}{
-		{true, "name: empty", &EmptyDirVolume{Name: "empty"}},
+		{"name provided", true, "name: empty", &EmptyDirVolume{Name: "empty"}},
 		{
+			"nothing provided",
 			false, `
 name: empty
 excess: field
 `,
 			nil,
 		},
-		{true, "", &EmptyDirVolume{}}, // UnmarshalYAML won't be even called for empty strings -> default value
+		{"Blank string provided", true, "", &EmptyDirVolume{}}, // UnmarshalYAML won't be even called for empty strings -> default value
 	}
 
 	for _, test := range tests {
-		t.Run("", func(t *testing.T) {
+		t.Log("Test case: ", test.Name)
+		t.Run(test.Name, func(t *testing.T) {
 			var emptyDir EmptyDirVolume
 			err := yaml.Unmarshal([]byte(test.RawEmptyDir), &emptyDir)
 			if err != nil {
@@ -587,6 +583,7 @@ emptyDirVolumes:
 	}
 
 	for _, test := range tests {
+		t.Log("Test case: ", test.Name)
 		t.Run(test.Name, func(t *testing.T) {
 			var service Service
 			err := yaml.Unmarshal([]byte(test.RawService), &service)
@@ -668,6 +665,7 @@ excess: key
 	}
 
 	for _, test := range tests {
+		t.Log("Test case: ", test.Name)
 		t.Run(test.Name, func(t *testing.T) {
 			var volume Volume
 			err := yaml.Unmarshal([]byte(test.RawVolume), &volume)
