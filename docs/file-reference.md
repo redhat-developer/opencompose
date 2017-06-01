@@ -316,12 +316,12 @@ Path based ingresses specify a path component that can be compared against a URL
 
 | Ingress              | When Compared to     | Accessible |
 |----------------------|----------------------|------------|
-| www.example.com/test | www.example.com/test | Yes |
-|                      | www.example.com      | No  |
-| www.example.com/test and www.example.com | www.example.com/test | Yes |
-|                      | www.example.com      | Yes |
-| www.example.com      | www.example.com/test | Yes (Matched by the host, not the ingress) |
-|                      | www.example.com      | Yes |
+| example.com/test     | example.com/test | Yes |
+|                      | example.com      | No  |
+| example.com/test and example.com | example.com/test | Yes |
+|                      | example.com      | Yes |
+| example.com      | example.com/test | Yes (Matched by the host, not the ingress) |
+|                      | example.com      | Yes |
 
 ### Mount
 
