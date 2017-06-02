@@ -8,6 +8,8 @@ import (
 
 	"path/filepath"
 
+	"log"
+
 	"github.com/redhat-developer/opencompose/pkg/encoding/util"
 	"github.com/redhat-developer/opencompose/pkg/goutil"
 	"github.com/redhat-developer/opencompose/pkg/object"
@@ -568,12 +570,11 @@ func (d *Decoder) Decode(in *object.Input) (*object.OpenCompose, error) {
 			// convert it to an absolute file path.
 			// This will fail if input file is URL
 			if (secData.File != nil) && !filepath.IsAbs(*secData.File) {
-
-				if in.URL != nil {
-					return nil, fmt.Errorf("Unable to decode secret %v with key %v has a relative file path %v, but is being passed as a URL", secret.Name, secData.Key, secData.File)
-				}
-
-				if in.STDIN {
+				if in.STDIN || in.URL != nil {
+					if in.URL != nil {
+						log.SetFlags(0)
+						log.Printf("File passed as URL, trying to locate secret locally at %v", *secData.File)
+					}
 					*secData.File, err = filepath.Abs(*secData.File)
 					if err != nil {
 						return nil, fmt.Errorf("Error getting absolute path of %v: %v", *secData.File, err)

@@ -149,7 +149,7 @@ func (e *EnvVariable) validate() error {
 	}
 
 	// make sure Value and SecretRef are not supplied at the same time
-	// also, that at least one of the both should be specified
+	// also that, one of them must be specified
 	// the following makes sure that exactly one of them exists at a given time
 	if (e.SecretRef != nil) == (e.Value != nil) {
 		return fmt.Errorf("Exactly one from 'value' or 'secretRef' must be specified for the environment variable key: %v", e.Key)
@@ -310,6 +310,8 @@ func (sd *SecretData) validate() error {
 	switch count {
 	case 0:
 		return fmt.Errorf("Please set one of plaintext, base64 or file field for the secret key: %v", sd.Key)
+	case 1:
+		return nil
 	case 2, 3:
 		return fmt.Errorf("Only one of plaintext, base64 or file fields can be set at a time for the secret key: %v", sd.Key)
 	default:
@@ -340,7 +342,7 @@ func validateSecretRef(sRef *string, oSec *[]Secret) error {
 					}
 				}
 				if !dataKeyFound {
-					log.Printf("Root level secret name : %v found, but the provided data key : %v is missing, assuming the corresponding secret exists in the cluster", secret.Name, secretDef.DataKey)
+					log.Printf("Root level secret name: %v found, but the provided data key: %v is missing, assuming the corresponding secret exists in the cluster", secret.Name, secretDef.DataKey)
 				}
 				break
 			}

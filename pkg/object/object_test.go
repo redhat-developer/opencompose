@@ -667,7 +667,7 @@ func TestLogOpenCompose_Validate(t *testing.T) {
 					},
 				},
 			},
-			fmt.Sprintf("secret name : %v found, but the provided data key : %v is missing", secretName, dataKey),
+			fmt.Sprintf("secret name: %v found, but the provided data key: %v is missing", secretName, dataKey),
 		},
 		{
 			"Secret name and secret data key, both present in root level secrets - env",
@@ -792,7 +792,7 @@ func TestLogOpenCompose_Validate(t *testing.T) {
 					},
 				},
 			},
-			fmt.Sprintf("secret name : %v found, but the provided data key : %v is missing", secretName, dataKey),
+			fmt.Sprintf("secret name: %v found, but the provided data key: %v is missing", secretName, dataKey),
 		},
 		{
 			"Secret name and secret data key, both present in root level secrets - env",

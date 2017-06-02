@@ -734,6 +734,70 @@ func TestTransformer_CreateDeployments(t *testing.T) {
 				},
 			},
 		},
+		{
+			"When secret is mounted as a volume",
+			true,
+			&object.Service{
+				Name: name,
+				Containers: []object.Container{
+					{
+						Image: image,
+						Mounts: []object.Mount{
+							{
+								SecretRef: goutil.StringAddr("secret/key"),
+								MountPath: "/foo/bar",
+							},
+						},
+					},
+				},
+			},
+			[]runtime.Object{
+				&ext_v1beta1.Deployment{
+					ObjectMeta: sMeta,
+					Spec: ext_v1beta1.DeploymentSpec{
+						Strategy: strategy,
+						Template: api_v1.PodTemplateSpec{
+							ObjectMeta: api_v1.ObjectMeta{
+								Labels: map[string]string{
+									"service": name,
+								},
+							},
+							Spec: api_v1.PodSpec{
+								Containers: []api_v1.Container{
+									{
+										Name:  podname,
+										Image: image,
+										VolumeMounts: []api_v1.VolumeMount{
+											{
+												Name:      "secret",
+												ReadOnly:  true,
+												MountPath: "/foo/bar",
+											},
+										},
+									},
+								},
+								Volumes: []api_v1.Volume{
+									{
+										Name: "secret",
+										VolumeSource: api_v1.VolumeSource{
+											Secret: &api_v1.SecretVolumeSource{
+												SecretName: "secret",
+												Items: []api_v1.KeyToPath{
+													{
+														Key:  "key",
+														Path: "key",
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	transformer := Transformer{}

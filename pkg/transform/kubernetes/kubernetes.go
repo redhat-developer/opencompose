@@ -260,6 +260,8 @@ func (t *Transformer) CreateDeployments(s *object.Service) ([]runtime.Object, er
 					return nil, fmt.Errorf("Invalid secret %v specified in volume: %v", *mount.SecretRef, err)
 				}
 
+				volumeMount.Name = secretDef.SecretName
+
 				secretVolume := api_v1.Volume{
 					Name: secretDef.SecretName,
 					VolumeSource: api_v1.VolumeSource{
