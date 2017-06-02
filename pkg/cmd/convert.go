@@ -25,8 +25,7 @@ import (
 )
 
 var (
-	convertExample = `  # Converts file
-  opencompose convert -f opencompose.yaml`
+	convertExample = `opencompose convert -f opencompose.yaml`
 )
 
 const (
@@ -36,8 +35,8 @@ const (
 func NewCmdConvert(v *viper.Viper, out, outerr io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "convert",
-		Short:   "Converts OpenCompose files into Kubernetes (and OpenShift) artifacts",
-		Long:    "Converts OpenCompose files into Kubernetes (and OpenShift) artifacts",
+		Short:   "Convert OpenCompose files into Kubernetes (and OpenShift) artifacts",
+		Long:    "Convert OpenCompose files into Kubernetes (and OpenShift) artifacts",
 		Example: convertExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RunConvert(v, cmd, out, outerr)

@@ -10,8 +10,6 @@ import (
 )
 
 var (
-	completionExample = `  source <(opencompose completion)`
-
 	completionShells = map[string]func(out io.Writer, cmd *cobra.Command) error{
 		"bash": runCompletionBash,
 		"zsh":  runCompletionZsh,
@@ -25,10 +23,17 @@ func NewCmdCompletion(v *viper.Viper, out, outerr io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:     "completion",
-		Short:   "Generate the opencompose completion code for bash",
-		Long:    "Generate the opencompose completion code for bash",
-		Example: completionExample,
+		Use:   "completion",
+		Short: "Output shell completion code",
+		Long: `Generates shell completion code.
+
+Auto completion supports both bash and zsh. Output is to STDOUT.
+
+source <(kompose completion bash)
+source <(kompose completion zsh)
+
+Will load the shell completion code.
+	`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RunCompletion(v, cmd, args, out, outerr)
 		},
@@ -40,11 +45,11 @@ func NewCmdCompletion(v *viper.Viper, out, outerr io.Writer) *cobra.Command {
 
 func RunCompletion(v *viper.Viper, cmd *cobra.Command, args []string, out, outerr io.Writer) error {
 	if len(args) == 0 {
-		return cmdutil.UsageError(cmd, "Shell not specified.")
+		return cmdutil.UsageError(cmd, "Shell not specified. ex. opencompose completion [bash|zsh]")
 	}
 
 	if len(args) > 1 {
-		return cmdutil.UsageError(cmd, "Too many arguments. Expected only the shell type.")
+		return cmdutil.UsageError(cmd, "Too many arguments. Expected only the shell type. ex. opencompose completion [bash|zsh]")
 	}
 
 	runFunc, found := completionShells[args[0]]
@@ -59,6 +64,11 @@ func runCompletionBash(out io.Writer, rootCmd *cobra.Command) error {
 	return rootCmd.GenBashCompletion(out)
 }
 
+/*
+	This is copied from
+	https://github.com/kubernetes/kubernetes/blob/ea18d5c32ee7c320fe96dda6b0c757476908e696/pkg/kubectl/cmd/completion.go
+	in order to generate ZSH completion support.
+*/
 func runCompletionZsh(out io.Writer, rootCmd *cobra.Command) error {
 	zshInitialization := `
 __opencompose_bash_source() {
