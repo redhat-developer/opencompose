@@ -39,7 +39,7 @@ func BindViper(v *viper.Viper, fs *flag.FlagSet, name string) {
 
 func AddIOFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringSliceP(Flag_File_Key, "f", []string{}, "Specify alternative OpenCompose file(s)")
-	cmd.PersistentFlags().StringP(Flag_OutputDir_Key, "o", "./", "Specify output directory for genrated Kubernetes (and OpenShift) definitions")
+	cmd.PersistentFlags().StringP(Flag_OutputDir_Key, "o", "", "Specify output directory for genrated Kubernetes (and OpenShift) definitions")
 	cmd.PersistentFlags().StringP(Flag_Distro_Key, "d", "kubernetes", "Choose a target distribution")
 }
 

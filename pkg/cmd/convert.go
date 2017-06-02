@@ -137,7 +137,7 @@ func RunConvert(v *viper.Viper, cmd *cobra.Command, out, outerr io.Writer) error
 
 	var writeObject func(o runtime.Object, data []byte) error
 	outputDir := v.GetString(cmdutil.Flag_OutputDir_Key)
-	if outputDir == "-" {
+	if outputDir == "" || outputDir == "-" {
 		// don't use dir but write it to out (stdout)
 		writeObject = func(o runtime.Object, data []byte) error {
 			_, err := fmt.Fprintln(out, "---")
