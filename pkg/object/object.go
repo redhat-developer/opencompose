@@ -205,22 +205,20 @@ func (c *Container) validate() error {
 			return fmt.Errorf("failed to validate mount: %v", err)
 		}
 
-		var mountType *string
+		var mountTypeValue *string
 		if mount.VolumeRef != nil {
-			mountType = mount.VolumeRef
-		}
-		if mount.SecretRef != nil {
-			mountType = mount.SecretRef
+			mountTypeValue = mount.VolumeRef
+		} else if mount.SecretRef != nil {
+			mountTypeValue = mount.SecretRef
+		} else {
+			return fmt.Errorf("Neither volumeRef or secretRef specified for the mountPath: %v", mount.MountPath)
 		}
 
 		// mountPath should not collide, which means you should not do multiple mounts in same place
 		if v, ok := allMounts[mount.MountPath]; ok {
-			return fmt.Errorf("mount %q: mountPath %q: cannot have same mountPath as %q", *mountType, mount.MountPath, v)
+			return fmt.Errorf("mount %q: mountPath %q: cannot have same mountPath as %q", *mountTypeValue, mount.MountPath, v)
 		}
-		allMounts[mount.MountPath] = *mountType
-
-		// validate volumeSubPath
-		// TODO: if there is someway to do it
+		allMounts[mount.MountPath] = *mountTypeValue
 	}
 	return nil
 }

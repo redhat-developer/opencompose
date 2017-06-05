@@ -200,9 +200,9 @@ type Mount struct {
 	// to identify whether these fields were given by user or not
 	// if these are not pointer then it is hard to identify what was given
 	// by user and what is the default value
-	VolumeSubPath *string `yaml:"volumeSubPath,omitempty"`
-	ReadOnly      *bool   `yaml:"readOnly,omitempty"`
-	SecretRef     *string `yaml:"secretRef,omitempty"`
+	VolumeSubPath *string       `yaml:"volumeSubPath,omitempty"`
+	ReadOnly      *bool         `yaml:"readOnly,omitempty"`
+	SecretRef     *ResourceName `yaml:"secretRef,omitempty"`
 }
 
 func (m *Mount) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -502,7 +502,7 @@ func (d *Decoder) Decode(in *object.Input) (*object.OpenCompose, error) {
 				}
 
 				if m.SecretRef != nil {
-					mount.SecretRef = m.SecretRef
+					mount.SecretRef = goutil.StringAddr(string(*m.SecretRef))
 				}
 
 				oc.Mounts = append(oc.Mounts, mount)
@@ -516,10 +516,10 @@ func (d *Decoder) Decode(in *object.Input) (*object.OpenCompose, error) {
 
 				if e.Value != nil {
 					env.Value = e.Value
-				}
-
-				if e.SecretRef != nil {
+				} else if e.SecretRef != nil {
 					env.SecretRef = e.SecretRef
+				} else {
+					return nil, fmt.Errorf("Neither secretRef nor value is set for the environment vairable: %v", e.Key)
 				}
 
 				oc.Environment = append(oc.Environment, env)
