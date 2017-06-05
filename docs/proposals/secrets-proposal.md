@@ -131,6 +131,6 @@ For the above mentioned syntax, the `secrets` definition at the container level 
 
 `secrets.data.file` is an _optional_ field of type _string_ which takes the path of the file that contain the secret data.
 
-`secrets.base64` is an _optional_ field which takes a _string_ which is base64 encoded as secret data.
+`secrets.data.base64` is an _optional_ field which takes a _string_ which is base64 encoded as secret data.
 
-`secrets.plaintext` is an _optional_ field which takes a _string_ which contains the secret data in plaintext.
+`secrets.data.plaintext` is an _optional_ field which takes a _string_ which contains the secret data in plaintext.
