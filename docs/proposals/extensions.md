@@ -49,7 +49,7 @@ _wordpress.extension.yml_
 
 ```yaml
 version: '0.1-dev'
-extends: wordpress-opencompose.yml
+type: extension
 
 services:
 - name: database
@@ -82,7 +82,6 @@ Now the command, `opencompose -f wordpress-opencompose.yml,wordpress.extension.y
 
 The extension file -
 - does not have to be a legal OpenCompose file. It can be a complete OpenCompose file, in which case nothing will be overridden and only appended to the original file.
-- include a root level `extends: <comma separated file names>` that indicates which OpenCompose file(s) this file extends.
-This means that one file can extend multiple OpenCompose file.
+- specifies a root level `type: extension` field which makes it an extension file, which means this file is not expected to have legal OpenCompose syntax and mandatory fields can be missing. The validation will be carried out once the file is merged with the other files.
 - _everything_ mentioned in the extension file takes precedence over the file it is extending, whenever a conflicting field appears.
 - is passed normally like any other OpenCompose file besides the normal file with the `-f` directive, e.g. `opencompose -f original.yml,extension.yml convert`
