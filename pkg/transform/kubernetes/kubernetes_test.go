@@ -683,12 +683,12 @@ func TestTransformer_CreateDeployments(t *testing.T) {
 			}
 
 			if !test.Succeed {
-				t.Errorf("Expected failure, but succeeded, service: %#v\nConverted k8s Deployment: %#v", test.Service, kd[0])
+				t.Errorf("Expected failure, but succeeded, service: %#v\nConverted k8s Deployment: %#v", test.Service, spew.Sprint(kd))
 				return
 			}
 
 			if !reflect.DeepEqual(kd, test.K8sDeployments) {
-				t.Errorf("Expected: %#v\nGot: %#v\n", test.K8sDeployments, kd)
+				t.Errorf("Expected: %#v\nGot: %#v\n", spew.Sprint(test.K8sDeployments), spew.Sprint(kd))
 				return
 			}
 		})
