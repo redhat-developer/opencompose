@@ -744,7 +744,10 @@ func TestTransformer_CreateDeployments(t *testing.T) {
 						Image: image,
 						Mounts: []object.Mount{
 							{
-								SecretRef: goutil.StringAddr("secret/key"),
+								SecretRef: &object.SecretDef{
+									SecretName: "secret",
+									DataKey:    "key",
+								},
 								MountPath: "/foo/bar",
 							},
 						},

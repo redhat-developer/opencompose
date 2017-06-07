@@ -1383,14 +1383,20 @@ secrets:
 								Image: "tomaskral/nonroot-nginx",
 								Environment: []object.EnvVariable{
 									{
-										Key:       "ROOT_PASSWORD",
-										SecretRef: goutil.StringAddr("dbcreds/root_password"),
+										Key: "ROOT_PASSWORD",
+										SecretRef: &object.SecretDef{
+											SecretName: "dbcreds",
+											DataKey:    "root_password",
+										},
 									},
 								},
 								Mounts: []object.Mount{
 									{
 										MountPath: "/foo/bar",
-										SecretRef: goutil.StringAddr("dbcreds/mysql_password"),
+										SecretRef: &object.SecretDef{
+											SecretName: "dbcreds",
+											DataKey:    "mysql_password",
+										},
 									},
 								},
 							},
@@ -1437,6 +1443,38 @@ secrets:
 
 			if !reflect.DeepEqual(openCompose, tt.OpenCompose) {
 				t.Fatal(spew.Errorf("Expected:\n%#+v\n, got:\n%#+v", tt.OpenCompose, openCompose))
+			}
+		})
+	}
+}
+
+func TestSecretRefToSecretDef(t *testing.T) {
+	tests := []struct {
+		Name      string
+		secretRef string
+		secretDef *SecretDef
+	}{
+		{
+			"Test valid secretRef",
+			"secretname/datakey",
+			&SecretDef{
+				SecretName: "secretname",
+				DataKey:    "datakey",
+			},
+		},
+		{
+			"Test invalid secretRef, no '/'",
+			"secretname,datakey",
+			nil,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+			sDef, _ := SecretRefToSecretDef(&test.secretRef)
+
+			if !reflect.DeepEqual(sDef, test.secretDef) {
+				t.Errorf("Expected -\n%v\nGot -\n%v", *test.secretDef, *sDef)
 			}
 		})
 	}

@@ -9,7 +9,6 @@ import (
 
 	"log"
 
-	"github.com/redhat-developer/opencompose/pkg/transform/util"
 	"k8s.io/client-go/pkg/api/resource"
 	"k8s.io/client-go/pkg/util/validation"
 )
@@ -36,7 +35,7 @@ type Port struct {
 type EnvVariable struct {
 	Key       string
 	Value     *string
-	SecretRef *string
+	SecretRef *SecretDef
 }
 
 type Mount struct {
@@ -44,7 +43,7 @@ type Mount struct {
 	MountPath     string
 	VolumeSubPath string
 	ReadOnly      bool
-	SecretRef     *string
+	SecretRef     *SecretDef
 }
 
 type Labels map[string]string
@@ -87,6 +86,11 @@ type SecretData struct {
 	File      *string
 }
 
+type SecretDef struct {
+	SecretName string
+	DataKey    string
+}
+
 type OpenCompose struct {
 	Version  string
 	Services []Service
@@ -100,6 +104,7 @@ type OpenCompose struct {
 // For instance, this is being set in cmd.GetValidatedObject(), and getting
 // in v1.Decode() to convert the relative path of the secret file from the
 // OpenCompose file, and convert it to an absolute path
+// TODO: I don't really like this here, this should be somewhere else, ideally in pkg/cmd/convert.go, but that's not working out due to import cycle issues.
 type Input struct {
 	Data     []byte
 	STDIN    bool
@@ -209,7 +214,7 @@ func (c *Container) validate() error {
 		if mount.VolumeRef != nil {
 			mountTypeValue = mount.VolumeRef
 		} else if mount.SecretRef != nil {
-			mountTypeValue = mount.SecretRef
+			mountTypeValue = &mount.SecretRef.SecretName
 		} else {
 			return fmt.Errorf("Neither volumeRef or secretRef specified for the mountPath: %v", mount.MountPath)
 		}
@@ -317,39 +322,42 @@ func (sd *SecretData) validate() error {
 	}
 }
 
-func validateSecretRef(sRef *string, oSec *[]Secret) error {
-	// validate secretRef syntax
-	secretDef, err := util.SecretRefToSecretDef(sRef)
-	if err != nil {
-		return fmt.Errorf("unable to verify secretRef syntax: %v", err)
+// This returns 2 boolean values, the first one is set to true if the root level
+// secret with the given SecretDef.SecretName exists
+// And the second one is set to true if the root level secret contains the
+// SecretDef.DataKey key
+func (o *OpenCompose) secretExists(sRef *SecretDef) (bool, bool) {
+	for _, secret := range o.Secrets {
+		if secret.Name == sRef.SecretName {
+			return true, secret.secretDataKeyExists(sRef.DataKey)
+		}
 	}
+	return false, false
+}
 
-	if len(*oSec) == 0 {
+func (s *Secret) secretDataKeyExists(name string) bool {
+	for _, secData := range s.Data {
+		if secData.Key == name {
+			return true
+		}
+	}
+	return false
+}
+
+func (o *OpenCompose) validateSecretRef(sRef *SecretDef) error {
+	if len(o.Secrets) == 0 {
 		log.Printf("There are no root level secrets defined, assuming the corresponding secret exists in the cluster: %v", *sRef)
 	} else {
-		secretFound := false
-		for _, secret := range *oSec {
-			if secretDef.SecretName == secret.Name {
-				secretFound = true
+		isSecret, isDataKey := o.secretExists(sRef)
 
-				dataKeyFound := false
-				for _, secData := range secret.Data {
-					if secretDef.DataKey == secData.Key {
-						dataKeyFound = true
-						break
-					}
-				}
-				if !dataKeyFound {
-					log.Printf("Root level secret name: %v found, but the provided data key: %v is missing, assuming the corresponding secret exists in the cluster", secret.Name, secretDef.DataKey)
-				}
-				break
+		if !isDataKey {
+			if isSecret {
+				log.Printf("Root level secret name: %v found, but the corresponding data key: %v is missing, assuming the corresponding secret exists in the cluster", sRef.SecretName, sRef.DataKey)
+			} else {
+				log.Printf("%v does not correspond to any root level secret, assuming the corresponding secret exists in the cluster", sRef.SecretName)
 			}
 		}
-		if !secretFound {
-			log.Printf("secretRef %v does not correspond to any root level secret, assuming the corresponding secret exists in the cluster", *sRef)
-		}
 	}
-
 	return nil
 }
 
@@ -387,14 +395,14 @@ func (o *OpenCompose) Validate() error {
 				}
 
 				if mount.SecretRef != nil {
-					if err := validateSecretRef(mount.SecretRef, &o.Secrets); err != nil {
+					if err := o.validateSecretRef(mount.SecretRef); err != nil {
 						return fmt.Errorf("Failed to validate secretRef: %v", *mount.SecretRef)
 					}
 				}
 			}
 			for _, env := range container.Environment {
 				if env.SecretRef != nil {
-					if err := validateSecretRef(env.SecretRef, &o.Secrets); err != nil {
+					if err := o.validateSecretRef(env.SecretRef); err != nil {
 						return fmt.Errorf("Failed to validate secretRef: %v", *env.SecretRef)
 					}
 				}

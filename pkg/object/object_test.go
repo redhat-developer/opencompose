@@ -154,7 +154,10 @@ func TestContainer_Validate(t *testing.T) {
 				Mounts: []Mount{
 					{
 						VolumeRef: goutil.StringAddr("mountDef"),
-						SecretRef: goutil.StringAddr("secretDef"),
+						SecretRef: &SecretDef{
+							SecretName: "foo",
+							DataKey:    "bar",
+						},
 						MountPath: "/foo/bar",
 					},
 				},
@@ -170,7 +173,10 @@ func TestContainer_Validate(t *testing.T) {
 						MountPath: "/foo/bar",
 					},
 					{
-						SecretRef: goutil.StringAddr("secretDef"),
+						SecretRef: &SecretDef{
+							SecretName: "foo",
+							DataKey:    "bar",
+						},
 						MountPath: "/foo/bar",
 					},
 				},
@@ -182,7 +188,10 @@ func TestContainer_Validate(t *testing.T) {
 			&Container{
 				Mounts: []Mount{
 					{
-						SecretRef: goutil.StringAddr("secretDef"),
+						SecretRef: &SecretDef{
+							SecretName: "foo",
+							DataKey:    "bar",
+						},
 						MountPath: "/foo/bar",
 					},
 				},
@@ -230,9 +239,12 @@ func TestContainer_Validate(t *testing.T) {
 			&Container{
 				Environment: []EnvVariable{
 					{
-						Key:       "key",
-						Value:     goutil.StringAddr("value"),
-						SecretRef: goutil.StringAddr("secretDef"),
+						Key:   "key",
+						Value: goutil.StringAddr("value"),
+						SecretRef: &SecretDef{
+							SecretName: "foo",
+							DataKey:    "bar",
+						},
 					},
 				},
 			},
@@ -254,8 +266,11 @@ func TestContainer_Validate(t *testing.T) {
 			&Container{
 				Environment: []EnvVariable{
 					{
-						Key:       "key",
-						SecretRef: goutil.StringAddr("secretDef"),
+						Key: "key",
+						SecretRef: &SecretDef{
+							SecretName: "foo",
+							DataKey:    "bar",
+						},
 					},
 				},
 			},
@@ -569,7 +584,10 @@ func TestSecretData_Validate(t *testing.T) {
 func TestLogOpenCompose_Validate(t *testing.T) {
 	name := "test-service"
 	image := "test-image"
-	secretRef := goutil.StringAddr("secretName/dataKey")
+	secretRef := &SecretDef{
+		SecretName: "secretName",
+		DataKey:    "dataKey",
+	}
 	secretName := "secretName"
 	dataKey := "dataKey"
 
@@ -667,7 +685,7 @@ func TestLogOpenCompose_Validate(t *testing.T) {
 					},
 				},
 			},
-			fmt.Sprintf("secret name: %v found, but the provided data key: %v is missing", secretName, dataKey),
+			fmt.Sprintf("secret name: %v found, but the corresponding data key: %v is missing", secretName, dataKey),
 		},
 		{
 			"Secret name and secret data key, both present in root level secrets - env",
@@ -792,7 +810,7 @@ func TestLogOpenCompose_Validate(t *testing.T) {
 					},
 				},
 			},
-			fmt.Sprintf("secret name: %v found, but the provided data key: %v is missing", secretName, dataKey),
+			fmt.Sprintf("secret name: %v found, but the corresponding data key: %v is missing", secretName, dataKey),
 		},
 		{
 			"Secret name and secret data key, both present in root level secrets - env",
@@ -850,7 +868,10 @@ func TestOpenCompose_Validate(t *testing.T) {
 	image := "test-image"
 	mountName := "mountname"
 	mountPath := "/foo/bar"
-	secretRef := "foosec/fookey"
+	secretRef := &SecretDef{
+		SecretName: "fooSec",
+		DataKey:    "fooKey",
+	}
 
 	tests := []struct {
 		Name            string
@@ -1074,7 +1095,7 @@ func TestOpenCompose_Validate(t *testing.T) {
 								Image: image,
 								Mounts: []Mount{
 									{
-										SecretRef: &secretRef,
+										SecretRef: secretRef,
 										MountPath: mountPath,
 									},
 								},

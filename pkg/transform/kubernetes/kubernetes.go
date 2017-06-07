@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 
 	"github.com/redhat-developer/opencompose/pkg/object"
-	transformUtil "github.com/redhat-developer/opencompose/pkg/transform/util"
 	"github.com/redhat-developer/opencompose/pkg/util"
 	_ "k8s.io/client-go/pkg/api/install"
 	"k8s.io/client-go/pkg/api/resource"
@@ -214,18 +213,12 @@ func (t *Transformer) CreateDeployments(s *object.Service) ([]runtime.Object, er
 			}
 
 			if e.SecretRef != nil {
-
-				secretDef, err := transformUtil.SecretRefToSecretDef(e.SecretRef)
-				if err != nil {
-					return nil, fmt.Errorf("Invalid secret %v specified in environment: %v", *e.SecretRef, err)
-				}
-
 				env.ValueFrom = &api_v1.EnvVarSource{
 					SecretKeyRef: &api_v1.SecretKeySelector{
 						LocalObjectReference: api_v1.LocalObjectReference{
-							Name: secretDef.SecretName,
+							Name: e.SecretRef.SecretName,
 						},
-						Key: secretDef.DataKey,
+						Key: e.SecretRef.DataKey,
 					},
 				}
 			}
@@ -254,23 +247,17 @@ func (t *Transformer) CreateDeployments(s *object.Service) ([]runtime.Object, er
 
 			if mount.SecretRef != nil {
 				volumeMount.ReadOnly = true
-
-				secretDef, err := transformUtil.SecretRefToSecretDef(mount.SecretRef)
-				if err != nil {
-					return nil, fmt.Errorf("Invalid secret %v specified in volume: %v", *mount.SecretRef, err)
-				}
-
-				volumeMount.Name = secretDef.SecretName
+				volumeMount.Name = mount.SecretRef.SecretName
 
 				secretVolume := api_v1.Volume{
-					Name: secretDef.SecretName,
+					Name: mount.SecretRef.SecretName,
 					VolumeSource: api_v1.VolumeSource{
 						Secret: &api_v1.SecretVolumeSource{
-							SecretName: secretDef.SecretName,
+							SecretName: mount.SecretRef.SecretName,
 							Items: []api_v1.KeyToPath{
 								{
-									Key:  secretDef.DataKey,
-									Path: secretDef.DataKey,
+									Key:  mount.SecretRef.DataKey,
+									Path: mount.SecretRef.DataKey,
 								},
 							},
 						},
