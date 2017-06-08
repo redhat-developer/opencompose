@@ -75,6 +75,30 @@ volumes:
 With this file,
 - the OpenCompose definitions which already exist in _wordpress-opencompose.yml_ are updated/overwritten, which in this case is the _database_ service, which gets a volume mount and a secret exposed.
 - the OpenCompose definitions that do not exist in _wordpress-opencompose.yml_, are created, which in this case are the root level secrets and root level volumes.
+- the OpenCompose definitions can be deleted using the immutable keys for different fields -
+
+| field                        | immutable keys |
+|--------------------------|-----------------------|
+| services                 | name                 |
+| containers              | name                |
+| env                         | name               |
+| ports                      | servicePort       |
+| mounts                  | mountPath        |
+| emptyDirVolumes  | name                |
+| volumes                 | name                |
+
+Support, we want to delete the environment variable "foo", then out extension file with look like -
+
+```yaml
+version: '0.1-dev'
+type: extension
+
+services:
+- name: database
+  env:
+  - name: foo
+    $operation: delete
+```
 
 Now the command, `opencompose -f wordpress-opencompose.yml,wordpress.extension.yml convert` is run, the magic happens and wordpress runs happily in the wild.
 
