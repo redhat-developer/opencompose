@@ -45,6 +45,7 @@ type Mount struct {
 type Labels map[string]string
 
 type Container struct {
+	Name        string
 	Image       string
 	Environment []EnvVariable
 	Ports       []Port

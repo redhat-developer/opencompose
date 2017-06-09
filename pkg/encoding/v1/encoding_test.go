@@ -502,6 +502,7 @@ key4: value4
 }
 
 func TestService_UnmarshalYAML(t *testing.T) {
+	containerName := ResourceName("test")
 	tests := []struct {
 		Name       string
 		Succeed    bool
@@ -515,12 +516,14 @@ name: frontend
 replicas: 3
 containers:
 - image: tomaskral/kompose-demo-frontend:test
+  name: test
 `,
 			&Service{
 				Name:     "frontend",
 				Replicas: goutil.Int32Addr(3),
 				Containers: []Container{
 					{
+						Name:  containerName,
 						Image: "tomaskral/kompose-demo-frontend:test",
 					},
 				},
@@ -534,6 +537,7 @@ name: frontend
 replicas: notint
 containers:
 - image: tomaskral/kompose-demo-frontend:test
+  name: test
 `,
 			nil,
 		},
@@ -544,11 +548,13 @@ containers:
 name: frontend
 containers:
 - image: tomaskral/kompose-demo-frontend:test
+  name: test
 `,
 			&Service{
 				Name: "frontend",
 				Containers: []Container{
 					{
+						Name:  containerName,
 						Image: "tomaskral/kompose-demo-frontend:test",
 					},
 				},
@@ -561,6 +567,7 @@ containers:
 name: frontend
 containers:
 - image: tomaskral/kompose-demo-frontend:test
+  name: test
   mounts:
   - volumeRef: test-volume
     mountPath: /foo/bar
@@ -571,6 +578,7 @@ containers:
 				Name: "frontend",
 				Containers: []Container{
 					{
+						Name:  containerName,
 						Image: "tomaskral/kompose-demo-frontend:test",
 						Mounts: []Mount{
 							{
@@ -591,6 +599,7 @@ containers:
 name: frontend
 containers:
 - image: tomaskral/kompose-demo-frontend:test
+  name: test
 emptyDirVolumes:
 - name: empty
 `,
@@ -598,6 +607,7 @@ emptyDirVolumes:
 				Name: "frontend",
 				Containers: []Container{
 					{
+						Name:  containerName,
 						Image: "tomaskral/kompose-demo-frontend:test",
 					},
 				},
@@ -719,6 +729,7 @@ func TestDecoder_Decode(t *testing.T) {
 	// TODO: make better tests w.r.t excess keys in all possible places
 	// TODO: add checking for proper error because tests can fail for other than expected reasons
 
+	containerName := "test"
 	tests := []struct {
 		Succeed     bool
 		File        string
@@ -731,6 +742,7 @@ services:
 - name: frontend
   containers:
   - image: tomaskral/kompose-demo-frontend:test
+    name: test
     env:
     - name: KEY
       value: value
@@ -759,6 +771,7 @@ volumes:
 						Name: "frontend",
 						Containers: []object.Container{
 							{
+								Name:  containerName,
 								Image: "tomaskral/kompose-demo-frontend:test",
 								Environment: []object.EnvVariable{
 									{
@@ -819,6 +832,7 @@ services:
 - name: helloworld
   containers:
   - image: tomaskral/nonroot-nginx
+    name: test
     ports:
     - port: 8080
       type: external
@@ -830,6 +844,7 @@ services:
 						Name: "helloworld",
 						Containers: []object.Container{
 							{
+								Name:  containerName,
 								Image: "tomaskral/nonroot-nginx",
 								Ports: []object.Port{
 									{
@@ -853,6 +868,7 @@ services:
 - name: helloworld
   containers:
   - image: tomaskral/nonroot-nginx
+    name: test
     ports:
     - port: 8080
       type: internal
@@ -864,6 +880,7 @@ services:
 						Name: "helloworld",
 						Containers: []object.Container{
 							{
+								Name:  containerName,
 								Image: "tomaskral/nonroot-nginx",
 								Ports: []object.Port{
 									{
@@ -887,6 +904,7 @@ services:
 - name: helloworld
   containers:
   - image: tomaskral/nonroot-nginx
+    name: test
     ports:
     - port: 8080
       host: hw-nginx.127.0.0.1.nip.io
@@ -899,6 +917,7 @@ services:
 						Name: "helloworld",
 						Containers: []object.Container{
 							{
+								Name:  containerName,
 								Image: "tomaskral/nonroot-nginx",
 								Ports: []object.Port{
 									{
@@ -924,6 +943,7 @@ services:
 - name: frontend
   containers:
   - image: tomaskral/kompose-demo-frontend:test
+    name: test
     env:
 	- name: KEY
 	  value: value
@@ -942,6 +962,7 @@ version: 0.1-dev
 services:
 - name: frontend
   containers:
+    name: test
   - image: tomaskral/kompose-demo-frontend:test
 	env:
 	- name: KEY
@@ -966,6 +987,7 @@ services:
 - name: frontend
   containers:
   - image: tomaskral/kompose-demo-frontend:test
+    name: test
     env:
     - name: KEY
       value: value
@@ -980,6 +1002,7 @@ services:
 - name: frontend
   containers:
   - image: tomaskral/kompose-demo-frontend:test
+    name: test
     env:
     - name: KEY
       value: value
@@ -994,6 +1017,7 @@ services:
 - name: frontend
   containers:
   - image: tomaskral/kompose-demo-frontend:test
+    name: test
     env:
     - name: KEY
       value: value
@@ -1009,6 +1033,7 @@ services:
 - name: frontend
   containers:
   - image: tomaskral/kompose-demo-frontend:test
+    name: test
     env:
     - name: KEY
       value: value
@@ -1033,6 +1058,7 @@ services:
 - name: frontend
   containers:
   - image: tomaskral/kompose-demo-frontend:test
+    name: test
     env:
     - name: KEY
       value: value
@@ -1050,6 +1076,7 @@ volumes: []
 						Name: "frontend",
 						Containers: []object.Container{
 							{
+								Name:  containerName,
 								Image: "tomaskral/kompose-demo-frontend:test",
 								Environment: []object.EnvVariable{
 									{
@@ -1102,6 +1129,7 @@ services:
   replicas: 2
   containers:
   - image: tomaskral/nonroot-nginx
+    name: test
 `,
 			&object.OpenCompose{
 				Version: Version,
@@ -1111,6 +1139,7 @@ services:
 						Replicas: goutil.Int32Addr(2),
 						Containers: []object.Container{
 							{
+								Name:  containerName,
 								Image: "tomaskral/nonroot-nginx",
 							},
 						},
@@ -1126,6 +1155,7 @@ services:
   replicas: 2
   containers:
   - image: tomaskral/nonroot-nginx
+    name: test
     mounts:
     - volumeRef: test-volume
       readOnly: true
@@ -1139,6 +1169,7 @@ services:
 - name: helloworld
   containers:
   - image: tomaskral/nonroot-nginx
+    name: test
 volumes:
 - name: db
   size: 5Gi
@@ -1155,6 +1186,7 @@ services:
   replicas: 2
   containers:
   - image: tomaskral/nonroot-nginx
+    name: test
   labels:
       key1: value1
       key2: value2
@@ -1169,6 +1201,7 @@ services:
 						Replicas: goutil.Int32Addr(2),
 						Containers: []object.Container{
 							{
+								Name:  containerName,
 								Image: "tomaskral/nonroot-nginx",
 							},
 						},

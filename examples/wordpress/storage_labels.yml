@@ -6,6 +6,7 @@ services:
     app: db
   containers:
   - image: mariadb:10
+    name: mariadb
     env:
       - MYSQL_ROOT_PASSWORD=rootpasswd
       - MYSQL_DATABASE=wordpress
@@ -22,6 +23,7 @@ services:
     app: web
   containers:
   - image: wordpress:4
+    name: wordpress
     env:
     - WORDPRESS_DB_HOST=database:3306
     - WORDPRESS_DB_PASSWORD=wordpress

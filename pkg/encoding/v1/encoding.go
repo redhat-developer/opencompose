@@ -220,6 +220,7 @@ func (m *Mount) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 type Container struct {
+	Name   ResourceName  `yaml:"name"`
 	Image  ImageRef      `yaml:"image"`
 	Env    []EnvVariable `yaml:"env,omitempty"`
 	Ports  []Port        `yaml:"ports,omitempty"`
@@ -409,6 +410,7 @@ func (d *Decoder) Decode(data []byte) (*object.OpenCompose, error) {
 		// convert containers
 		for _, c := range s.Containers {
 			oc := object.Container{
+				Name:  string(c.Name),
 				Image: string(c.Image),
 			}
 

@@ -11,7 +11,8 @@ services:
   labels:
     foo_label: bar_label
   containers:
-  - image: foo/bar:tag
+  - name: baz
+    image: foo/bar:tag
     env:
     - name: foo
       value: bar
@@ -139,7 +140,8 @@ services:
 - name: foobar
   ...
   containers:
-  - image: foo/bar:tag
+  - name: baz
+    image: foo/bar:tag
     env:
     - name: foo
       value: bar
@@ -155,6 +157,14 @@ services:
 ```
 
 Container describes an image to use, its arguments, which ports should be exposed and how.
+
+#### name
+
+| Type | Required |
+|------|----------|
+|string|    yes   |
+
+Name of the container.
 
 #### image
 
