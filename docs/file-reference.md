@@ -15,6 +15,8 @@ services:
     env:
     - name: foo
       value: bar
+    - name: secure_env
+      secretRef: creds/secure
     command: ["/bin/foobar"]
     args:
     - "-f"
@@ -29,6 +31,8 @@ services:
       mountPath: /app/store
       volumeSubPath: foo/bar
       readOnly: true
+    - secretRef: creds/confidential
+      mountPath: /var/secure/pass
   emptyDirVolumes:
   - name: temp
 
@@ -37,6 +41,14 @@ volumes:
   size: 5GiB
   accessMode: ReadWriteMany
   storageClass: fast
+
+secrets:
+ - name: creds
+   data:
+   - key: secure
+     base64: YWRtaW4=
+   - key: confidential
+     file: ../.password.txt
 ```
 
 
@@ -141,8 +153,7 @@ services:
   containers:
   - image: foo/bar:tag
     env:
-    - name: foo
-      value: bar
+    - <Env>
     command: ["/bin/foobar"]
     args:
     - "-f"
@@ -171,8 +182,6 @@ Name of the image that container will be started from.
 |array of [EnvVariables](#envVariables) |    no    |
 
 List of environment variables to set in the container.
-Each string has to be formated as `variable_name=value`.
-
 
 #### command
 **NOT YET IMPLEMENTED**
@@ -229,6 +238,8 @@ services:
       env:
       - name: foo
         value: bar
+      - name: secure_env
+        secretRef: creds/secure
     ...
   ...
 ```
@@ -247,9 +258,21 @@ This is a string which defines the name of the environment variable being set.
 
 | Type | Required |
 |------|----------|
-|string|    yes   |
+|string|    no    |
 
 This is string which defines the value of the environment variable being set.
+
+#### secretRef
+
+| Type | Required |
+|------|----------|
+|string|    no    |
+
+Reference of the secret to be exposed at the given environment variable name in the format - `<secret name>/<secret data key>`
+
+##### Note:
+
+Exactly one from `value` or `secretRef` has to be specified for any environment variable.
 
 ### Port
 
@@ -337,6 +360,8 @@ services:
         mountPath: /app/store
         volumeSubPath: foo/bar
         readOnly: true
+      - secretRef: creds/confidential
+        mountPath: /var/secure/pass
     ...
 ...
 ```
@@ -345,9 +370,21 @@ services:
 
 | Type | Required | possible values                                                                 |
 |------|----------|---------------------------------------------------------------------------------|
-|string|    yes   | should conform to the definition of a subdomain in DNS (RFC 1123), [details](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/identifiers.md). |
+|string|    no    | should conform to the definition of a subdomain in DNS (RFC 1123), [details](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/identifiers.md). |
 
 Should match the name of volume from root level [`volumes`](#volumes) directive or `service` level [`emptyDirVolumes`](#emptydirvolumes) directive.
+
+#### secretRef
+
+| Type | Required |
+|------|----------|
+|string|    no   |
+
+Reference of the secret to be mounted at the given `mountPath` in the format - `<secret name>/<secret data key>`
+
+##### Note:
+
+Exactly one from `volumeRef` or `secretRef` has to be specified for any `mountPath`.
 
 #### mountPath
 
@@ -445,3 +482,70 @@ AccessMode contains the desired access mode the volume should have.
 |string|    no    | 
 
 Name of the StorageClass that will back this volume.
+
+## Section: Secrets
+
+`secrets` is the main section that defines all the secrets to be created. `secrets` has to be an array of [SecretSpec](#secretspec)
+
+```yaml
+secrets:
+ - name: creds
+   data:
+   - key: secure
+     base64: YWRtaW4=
+   - key: confidential
+     file: ../.password.txt
+```
+### SecretSpec
+
+#### name
+
+| Type | Required | possible values                                                                 |
+|------|----------|---------------------------------------------------------------------------------|
+|string|    yes   | should conform to the definition of a subdomain in DNS (RFC 1123), [details](https://github.com/kubernetes/community/blob/master/contributors/design-proposals/identifiers.md). |
+
+Name of the secret.
+
+#### data
+
+| Type | Required |
+|------|----------|
+|array |    yes   |
+
+Array of the secret data to hold inside a given secret name.
+
+##### key
+
+| Type | Required |
+|------|----------|
+|string|    yes   |
+
+The key using which the secret data will be referred to.
+
+##### plaintext
+
+| Type | Required |
+|------|----------|
+|string|    no    |
+
+Secret data in plaintext.
+
+##### base64
+
+| Type | Required |
+|------|----------|
+|string|    no    |
+
+Base64 encoded secret data.
+
+##### file
+
+| Type | Required |
+|------|----------|
+|string|    no    |
+
+Relative or absolute path of the file containing the secret data in plaintext.
+
+##### Note:
+
+Exactly one from `plaintext` or `base64` or `file` has to be specified for a given secret data key.

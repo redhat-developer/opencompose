@@ -3,6 +3,9 @@ package kubernetes
 import (
 	"fmt"
 
+	"encoding/base64"
+	"io/ioutil"
+
 	"github.com/redhat-developer/opencompose/pkg/object"
 	"github.com/redhat-developer/opencompose/pkg/util"
 	_ "k8s.io/client-go/pkg/api/install"
@@ -201,10 +204,26 @@ func (t *Transformer) CreateDeployments(s *object.Service) ([]runtime.Object, er
 		}
 
 		for _, e := range c.Environment {
-			kc.Env = append(kc.Env, api_v1.EnvVar{
-				Name:  e.Key,
-				Value: e.Value,
-			})
+			env := api_v1.EnvVar{
+				Name: e.Key,
+			}
+
+			if e.Value != nil {
+				env.Value = *e.Value
+			}
+
+			if e.SecretRef != nil {
+				env.ValueFrom = &api_v1.EnvVarSource{
+					SecretKeyRef: &api_v1.SecretKeySelector{
+						LocalObjectReference: api_v1.LocalObjectReference{
+							Name: e.SecretRef.SecretName,
+						},
+						Key: e.SecretRef.DataKey,
+					},
+				}
+			}
+
+			kc.Env = append(kc.Env, env)
 		}
 
 		for _, p := range c.Ports {
@@ -217,10 +236,36 @@ func (t *Transformer) CreateDeployments(s *object.Service) ([]runtime.Object, er
 		// TODO: It is assumed that the check is done about the existence of volume in root level volume section
 		for _, mount := range c.Mounts {
 			volumeMount := api_v1.VolumeMount{
-				Name:      mount.VolumeRef,
 				ReadOnly:  mount.ReadOnly,
 				MountPath: mount.MountPath,
 				SubPath:   mount.VolumeSubPath,
+			}
+
+			if mount.VolumeRef != nil {
+				volumeMount.Name = *mount.VolumeRef
+			}
+
+			if mount.SecretRef != nil {
+				volumeMount.ReadOnly = true
+				volumeMount.Name = mount.SecretRef.SecretName
+
+				secretVolume := api_v1.Volume{
+					Name: mount.SecretRef.SecretName,
+					VolumeSource: api_v1.VolumeSource{
+						Secret: &api_v1.SecretVolumeSource{
+							SecretName: mount.SecretRef.SecretName,
+							Items: []api_v1.KeyToPath{
+								{
+									Key:  mount.SecretRef.DataKey,
+									Path: mount.SecretRef.DataKey,
+								},
+							},
+						},
+					},
+				}
+
+				d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, secretVolume)
+
 			}
 
 			kc.VolumeMounts = append(kc.VolumeMounts, volumeMount)
@@ -228,12 +273,12 @@ func (t *Transformer) CreateDeployments(s *object.Service) ([]runtime.Object, er
 			// if this mount does not exist in emptydir then this is coming from root level volumes directive
 			// if tomorrow we add support for ConfigMaps or Secrets mounted as volumes the check should be done
 			// here to see if it is not coming from configMaps or Secrets
-			if !s.EmptyDirVolumeExists(mount.VolumeRef) {
+			if (mount.VolumeRef != nil && !s.EmptyDirVolumeExists(*mount.VolumeRef)) || (mount.SecretRef == nil) {
 				volume := api_v1.Volume{
-					Name: mount.VolumeRef,
+					Name: *mount.VolumeRef,
 					VolumeSource: api_v1.VolumeSource{
 						PersistentVolumeClaim: &api_v1.PersistentVolumeClaimVolumeSource{
-							ClaimName: mount.VolumeRef,
+							ClaimName: *mount.VolumeRef,
 						},
 					},
 				}
@@ -300,6 +345,45 @@ func (t *Transformer) CreatePVC(volume object.Volume) (runtime.Object, error) {
 	return pvc, nil
 }
 
+func (t *Transformer) CreateSecret(secret *object.Secret) (runtime.Object, error) {
+
+	kubeSecretData := make(map[string][]byte)
+
+	for _, data := range secret.Data {
+		switch {
+
+		case data.Plaintext != nil:
+			kubeSecretData[data.Key] = []byte(*data.Plaintext)
+
+		case data.File != nil:
+			fileData, err := ioutil.ReadFile(*data.File)
+			if err != nil {
+				return nil, fmt.Errorf("Unable to read %v: %v", *data.File, err)
+			}
+			kubeSecretData[data.Key] = fileData
+
+		case data.Base64 != nil:
+			decodedData, err := base64.StdEncoding.DecodeString(*data.Base64)
+			if err != nil {
+				return nil, fmt.Errorf("Unable to base64 decode data %v: %v", *data.Base64, err)
+			}
+			kubeSecretData[data.Key] = decodedData
+		}
+	}
+
+	sec := &api_v1.Secret{
+		ObjectMeta: api_v1.ObjectMeta{
+			Name: secret.Name,
+		},
+		Data: kubeSecretData,
+	}
+
+	// TODO: add secret validation here
+	// TODO: refer https://github.com/redhat-developer/opencompose/issues/139
+
+	return sec, nil
+}
+
 func (t *Transformer) TransformServices(services []object.Service) ([]runtime.Object, error) {
 	result := []runtime.Object{}
 
@@ -345,6 +429,22 @@ func (t *Transformer) TransformVolumes(volumes []object.Volume) ([]runtime.Objec
 	return result, nil
 }
 
+func (t *Transformer) TransformSecrets(secrets []object.Secret) ([]runtime.Object, error) {
+	result := []runtime.Object{}
+
+	// create secrets
+	for _, secret := range secrets {
+		object, err := t.CreateSecret(&secret)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create secret %v: %v", secret.Name, err)
+		}
+
+		result = append(result, object)
+	}
+
+	return result, nil
+}
+
 func (t *Transformer) Transform(o *object.OpenCompose) ([]runtime.Object, error) {
 	result := []runtime.Object{}
 
@@ -361,6 +461,13 @@ func (t *Transformer) Transform(o *object.OpenCompose) ([]runtime.Object, error)
 		return nil, fmt.Errorf("failed to transform volumes: %s", err)
 	}
 	result = append(result, volumeObjects...)
+
+	// secrets
+	secretObjects, err := t.TransformSecrets(o.Secrets)
+	if err != nil {
+		return nil, fmt.Errorf("failed to transform secrets: %s", err)
+	}
+	result = append(result, secretObjects...)
 
 	return result, nil
 }

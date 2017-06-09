@@ -6,6 +6,10 @@ import (
 	"strconv"
 	"strings"
 
+	"path/filepath"
+
+	"log"
+
 	"github.com/redhat-developer/opencompose/pkg/encoding/util"
 	"github.com/redhat-developer/opencompose/pkg/goutil"
 	"github.com/redhat-developer/opencompose/pkg/object"
@@ -147,9 +151,33 @@ func (v *Port) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
+type SecretDef struct {
+	SecretName string
+	DataKey    string
+}
+
+func (sd *SecretDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var secretRef string
+	err := unmarshal(&secretRef)
+	if err != nil {
+		return err
+	}
+
+	secretDef, err := SecretRefToSecretDef(&secretRef)
+	if err != nil {
+		return fmt.Errorf("invalid secret syntax: %v", err)
+	}
+
+	sd.SecretName = secretDef.SecretName
+	sd.DataKey = secretDef.DataKey
+
+	return nil
+}
+
 type EnvVariable struct {
-	Key   string `yaml:"name"`
-	Value string `yaml:"value"`
+	Key       string     `yaml:"name"`
+	Value     *string    `yaml:"value,omitempty"`
+	SecretRef *SecretDef `yaml:"secretRef,omitempty"`
 }
 
 func (raw *EnvVariable) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -181,7 +209,6 @@ func (lb *Labels) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	*lb = Labels(labelMap)
-
 	return nil
 }
 
@@ -190,14 +217,15 @@ type ImageRef string
 // FIXME: implement ImageRef unmarshalling
 
 type Mount struct {
-	VolumeRef ResourceName `yaml:"volumeRef"`
-	MountPath string       `yaml:"mountPath"`
+	VolumeRef *ResourceName `yaml:"volumeRef,omitempty"`
+	MountPath string        `yaml:"mountPath"`
 	// these are optional fields so making them as pointer because it helps
 	// to identify whether these fields were given by user or not
 	// if these are not pointer then it is hard to identify what was given
 	// by user and what is the default value
-	VolumeSubPath *string `yaml:"volumeSubPath,omitempty"`
-	ReadOnly      *bool   `yaml:"readOnly,omitempty"`
+	VolumeSubPath *string    `yaml:"volumeSubPath,omitempty"`
+	ReadOnly      *bool      `yaml:"readOnly,omitempty"`
+	SecretRef     *SecretDef `yaml:"secretRef,omitempty"`
 }
 
 func (m *Mount) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -342,10 +370,63 @@ func (vs *VersionString) UnmarshalYAML(unmarshal func(interface{}) error) error 
 	return nil
 }
 
+type Secret struct {
+	Name ResourceName `yaml:"name"`
+	Data []SecretData `yaml:"data"`
+}
+
+func (s *Secret) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type SecretAlias Secret
+	var st struct {
+		SecretAlias `yaml:",inline"`
+		Leftovers   map[string]interface{} `yaml:",inline"` // Catches all undefined fields and must be empty after parsing.
+	}
+	err := unmarshal(&st)
+	if err != nil {
+		return err
+	}
+
+	if len(st.Leftovers) > 0 {
+		return util.NewExcessKeysErrorFromMap("Secrets", st.Leftovers)
+	}
+
+	*s = Secret(st.SecretAlias)
+
+	return nil
+}
+
+type SecretData struct {
+	Key       string  `yaml:"key"`
+	Plaintext *string `yaml:"plaintext,omitempty"`
+	Base64    *string `yaml:"base64,omitempty"`
+	File      *string `yaml:"file,omitempty"`
+}
+
+func (sd *SecretData) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type SecretDataAlias SecretData
+	var st struct {
+		SecretDataAlias `yaml:",inline"`
+		Leftovers       map[string]interface{} `yaml:",inline"` // Catches all undefined fields and must be empty after parsing.
+	}
+	err := unmarshal(&st)
+	if err != nil {
+		return err
+	}
+
+	if len(st.Leftovers) > 0 {
+		return util.NewExcessKeysErrorFromMap("Secrets", st.Leftovers)
+	}
+
+	*sd = SecretData(st.SecretDataAlias)
+
+	return nil
+}
+
 type OpenCompose struct {
 	Version  VersionString `yaml:"version"`
 	Services []Service     `yaml:"services"`
 	Volumes  []Volume      `yaml:"volumes,omitempty"`
+	Secrets  []Secret      `yaml:"secrets,omitempty"`
 }
 
 func (oc *OpenCompose) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -368,6 +449,19 @@ func (oc *OpenCompose) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
+func SecretRefToSecretDef(secretRef *string) (*SecretDef, error) {
+	splitSecretRef := strings.Split(*secretRef, "/")
+	if len(splitSecretRef) != 2 {
+		return nil, fmt.Errorf("invalid secret syntax, use 'secret: <secret_name>/<data_key>'")
+	}
+
+	return &SecretDef{
+		SecretName: splitSecretRef[0],
+		DataKey:    splitSecretRef[1],
+	}, nil
+
+}
+
 type Decoder struct{}
 
 // Unmarshals OpenCompose file into object.OpenCompose struct
@@ -377,10 +471,10 @@ type Decoder struct{}
 // and there is already accepted proposal for Go 1.9 about json alternative
 // https://github.com/golang/go/issues/15314 so hopefully yaml gets something similar
 // otherwise we have to ditch the decoder and write our own using reflect
-func (d *Decoder) Decode(data []byte) (*object.OpenCompose, error) {
+func (d *Decoder) Decode(in *object.Input) (*object.OpenCompose, error) {
 	var v1 OpenCompose
 	// TODO: check for excess fields (see above)
-	err := yaml.Unmarshal(data, &v1)
+	err := yaml.Unmarshal(in.Data, &v1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal OpenCompose: %s", err)
 	}
@@ -428,8 +522,11 @@ func (d *Decoder) Decode(data []byte) (*object.OpenCompose, error) {
 			// convert mounts
 			for _, m := range c.Mounts {
 				mount := object.Mount{
-					VolumeRef: string(m.VolumeRef),
 					MountPath: string(m.MountPath),
+				}
+
+				if m.VolumeRef != nil {
+					mount.VolumeRef = goutil.StringAddr(string(*m.VolumeRef))
 				}
 
 				if m.VolumeSubPath != nil {
@@ -440,15 +537,32 @@ func (d *Decoder) Decode(data []byte) (*object.OpenCompose, error) {
 					mount.ReadOnly = *m.ReadOnly
 				}
 
+				if m.SecretRef != nil {
+					mount.SecretRef = new(object.SecretDef)
+					mount.SecretRef.SecretName = m.SecretRef.SecretName
+					mount.SecretRef.DataKey = m.SecretRef.DataKey
+				}
+
 				oc.Mounts = append(oc.Mounts, mount)
 			}
 
 			// convert env
 			for _, e := range c.Env {
-				oc.Environment = append(oc.Environment, object.EnvVariable{
-					Key:   e.Key,
-					Value: e.Value,
-				})
+				env := object.EnvVariable{
+					Key: e.Key,
+				}
+
+				if e.Value != nil {
+					env.Value = e.Value
+				} else if e.SecretRef != nil {
+					env.SecretRef = new(object.SecretDef)
+					env.SecretRef.SecretName = e.SecretRef.SecretName
+					env.SecretRef.DataKey = e.SecretRef.DataKey
+				} else {
+					return nil, fmt.Errorf("Neither secretRef nor value is set for the environment vairable: %v", e.Key)
+				}
+
+				oc.Environment = append(oc.Environment, env)
 			}
 
 			os.Containers = append(os.Containers, oc)
@@ -479,6 +593,47 @@ func (d *Decoder) Decode(data []byte) (*object.OpenCompose, error) {
 		}
 
 		openCompose.Volumes = append(openCompose.Volumes, ov)
+	}
+
+	// convert secrets
+	for _, secret := range v1.Secrets {
+		var os object.Secret
+		os.Name = string(secret.Name)
+		for _, secData := range secret.Data {
+
+			// If the secret has been provided through a file
+			// &&
+			// if it is a relative path
+			// &&
+			// the OpenCompose input file is either STDIN or file path
+			// then
+			// convert it to an absolute file path.
+			// This will fail if input file is URL
+			if (secData.File != nil) && !filepath.IsAbs(*secData.File) {
+				if in.STDIN || in.URL != nil {
+					if in.URL != nil {
+						log.SetFlags(0)
+						log.Printf("File passed as URL, trying to locate secret locally at %v", *secData.File)
+					}
+					*secData.File, err = filepath.Abs(*secData.File)
+					if err != nil {
+						return nil, fmt.Errorf("Error getting absolute path of %v: %v", *secData.File, err)
+					}
+				}
+
+				if in.FilePath != nil {
+					*secData.File = filepath.Join(filepath.Dir(*in.FilePath), *secData.File)
+				}
+			}
+
+			os.Data = append(os.Data, object.SecretData{
+				Key:       secData.Key,
+				Plaintext: secData.Plaintext,
+				Base64:    secData.Base64,
+				File:      secData.File,
+			})
+		}
+		openCompose.Secrets = append(openCompose.Secrets, os)
 	}
 
 	return openCompose, nil
