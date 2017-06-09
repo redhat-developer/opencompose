@@ -1,24 +1,55 @@
 # OpenCompose
 
-[![Build Status](https://travis-ci.org/redhat-developer/opencompose.svg?branch=master)](https://travis-ci.org/redhat-developer/opencompose)
+[![Build Status Widget]][Build Status] [![GoDoc Widget]][GoDoc] [![Slack Widget]][Slack]
 
-The goal of OpenCompose is to make it easier for developers to on-board to Kubernetes.
 OpenCompose is a declarative higher level abstraction for specific Kubernetes resources.
 
-Very simple idea, isn't it? 
 A developer shouldn't have to learn various Kubernetes concepts just to test and deploy their applications.
 Focus on the application that is being developed.
+
+The goal of OpenCompose is to make it easier for developers to on-board to Kubernetes.
 
 We are at a very evolving stage of this project and we have listed some of our ideas as [issues](https://github.com/redhat-developer/opencompose/issues)
 and [examples](https://github.com/redhat-developer/opencompose/blob/master/examples/).
 We are open to suggestions and contributions from the Kubernetes community as our project grows.
 Please send any PRs, issues or RFCs to improve this project.
 
+## Use Case
+
+Go from a simple [hello-nginx.yaml](https://github.com/redhat-developer/opencompose/blob/master/examples/hello-nginx.yaml) example to a full Kubernetes environment:
+
+Create (or download) `hello-nginx.yaml`
+
+```yaml
+version: 0.1-dev
+services:
+- name: helloworld
+  containers:
+  - image: nginx
+    ports:
+    - port: 80:8080
+      type: external
+```
+
+Convert the file using `opencompose`
+
+```sh
+opencompose convert -f hello-nginx.yaml
+# Alternatively, you can pass the URL of the remote file
+opencompose convert -f https://raw.githubusercontent.com/redhat-developer/opencompose/master/examples/hello-nginx.yaml
+```
+
+Deploy your generate artifacts to Kubernetes with `kubectl`
+
+```sh
+kubectl create -f helloworld-service.yaml -f helloworld-deployment.yaml
+```
+
 ## Installation
 
 #### Binary installation
 
-You can retrieve binaries for Linux, macOS and Windows on our [GitHub release page](https://github.com/redhat-developer/opencompose/releases).
+The easiest way to install OpenCompose is through our binary on our [GitHub release page](https://github.com/redhat-developer/opencompose/releases).
 
 ```sh
 # Linux 
@@ -36,77 +67,43 @@ sudo mv ./opencompose /usr/local/bin/opencompose
 
 #### Go (from source)
 
-A simple `go get` is all you need in order to develop OpenCompose from source.
+To test the latest changes (as our project is still in it's infancy), a simple `go get` is all you need to get the latest source.
 
 ```sh
 go get -u github.com/redhat-developer/opencompose
 ```
 
-However, in order to file an issue, you may have to build it the supported way:
+Although the binary is installed via `go get`. In order to create a properly signed build (ex. `opencompose version`), you will have to build it with `make bin`:
 
 ```sh
 go get -u github.com/redhat-developer/opencompose
 make bin
 ```
 
-In order to have a properly signed build (as denoted by `./opencompose version`).
+## Shell autocompletion
 
-### Example
-1) Create or download [hello-nginx.yaml](https://github.com/redhat-developer/opencompose/blob/master/examples/hello-nginx.yaml).
-
-```yaml
-version: 0.1-dev
-services:
-- name: helloworld
-  containers:
-  - image: tomaskral/nonroot-nginx
-    ports:
-    - port: 8080
-```
-
-2) Convert OpenCompose file to Kubernetes objects
+We support both Bash and Zsh autocompletion.
 
 ```sh
-opencompose convert -f hello-nginx.yaml
-```
-
-Alternatively, you could also simply pass the URL of the remote file to OpenCompose, like -
-
-```sh
-opencompose convert -f https://raw.githubusercontent.com/redhat-developer/opencompose/master/examples/hello-nginx.yaml
-```
-
-This will create two Kubernetes files in current directory - `helloworld-deployment.yaml` and `helloworld-service.yaml`.
-
-To deploy your application to Kubernetes run:
-
-```sh
-kubectl create -f helloworld-service.yaml -f helloworld-deployment.yaml
-```
-
-
-### Command-line Completions
-#### Bash
-For Bash auto completion run the following command:
-
-```bash
+# Bash (add to .bashrc for persistence)
 source <(opencompose completion bash)
-```
 
-To make it permanent add this line to your `~/.bashrc`.
-
-#### Zsh
-For Zsh auto completion run the following command:
-
-```zsh
+# Zsh (add to .zshrc for persistence)
 source <(opencompose completion zsh)
 ```
 
-To make it permanent add this line to your `~/.zshrc`.
+## Documentation
 
-### Documentation
  - [OpenCompose file reference documentation](https://github.com/redhat-developer/opencompose/blob/master/docs/file-reference.md)
  - You can find more in [doc/](https://github.com/redhat-developer/opencompose/tree/master/docs) folder
 
-### Community
+## Community
+
 We always welcome your feedback and thoughts on the project! Come and join our mailing list - [opencompose [at] googlegroups.com](https://groups.google.com/forum/#!forum/opencompose). We also hangout on [slack.k8s.io](http://slack.k8s.io/) ([#sig-apps](https://kubernetes.slack.com/messages/sig-apps/)).
+
+[Build Status]: https://travis-ci.org/redhat-developer/opencompose
+[Build Status Widget]: https://travis-ci.org/redhat-developer/opencompose.svg?branch=master
+[GoDoc]: https://godoc.org/github.com/redhat-developer/opencompose
+[GoDoc Widget]: https://godoc.org/github.com/redhat-developer/opencompose?status.svg
+[Slack]: http://slack.kubernetes.io#sig-apps
+[Slack Widget]: https://s3.eu-central-1.amazonaws.com/ngtuna/join-us-on-slack.png
