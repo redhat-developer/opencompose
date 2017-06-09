@@ -2,7 +2,7 @@ version: 0.1-dev
 services:
 - name: helloworld
   containers:
-  - image: tomaskral/nonroot-nginx
+  - image: nginx
     ports:
-    - port: 8080:80
+    - port: 80:8080
       type: external
