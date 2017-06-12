@@ -1,7 +1,6 @@
 package kubernetes
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -579,7 +578,7 @@ func TestTransformer_CreateIngresses(t *testing.T) {
 
 func TestTransformer_CreateDeployments(t *testing.T) {
 	name := "test"
-	podname := fmt.Sprintf("%s-%d", name, 0)
+	containerName := "test"
 	image := "docker.io/test"
 	sMeta := api_v1.ObjectMeta{
 		Name: name,
@@ -604,6 +603,7 @@ func TestTransformer_CreateDeployments(t *testing.T) {
 				Name: name,
 				Containers: []object.Container{
 					{
+						Name:  containerName,
 						Image: image,
 					},
 				},
@@ -622,7 +622,7 @@ func TestTransformer_CreateDeployments(t *testing.T) {
 							Spec: api_v1.PodSpec{
 								Containers: []api_v1.Container{
 									{
-										Name:  podname,
+										Name:  containerName,
 										Image: image,
 									},
 								},
@@ -640,6 +640,7 @@ func TestTransformer_CreateDeployments(t *testing.T) {
 				Replicas: goutil.Int32Addr(1),
 				Containers: []object.Container{
 					{
+						Name:  containerName,
 						Image: image,
 					},
 				},
@@ -659,7 +660,7 @@ func TestTransformer_CreateDeployments(t *testing.T) {
 							Spec: api_v1.PodSpec{
 								Containers: []api_v1.Container{
 									{
-										Name:  podname,
+										Name:  containerName,
 										Image: image,
 									},
 								},

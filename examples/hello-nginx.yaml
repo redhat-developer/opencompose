@@ -3,5 +3,6 @@ services:
 - name: helloworld
   containers:
   - image: nginx
+    name: nginx
     ports:
     - port: 80

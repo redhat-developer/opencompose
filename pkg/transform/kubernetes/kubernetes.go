@@ -194,9 +194,9 @@ func (t *Transformer) CreateDeployments(s *object.Service) ([]runtime.Object, er
 
 	d.Spec.Replicas = s.Replicas
 
-	for i, c := range s.Containers {
+	for _, c := range s.Containers {
 		kc := api_v1.Container{
-			Name:  fmt.Sprintf("%s-%d", s.Name, i),
+			Name:  c.Name,
 			Image: c.Image,
 		}
 
@@ -209,7 +209,7 @@ func (t *Transformer) CreateDeployments(s *object.Service) ([]runtime.Object, er
 
 		for _, p := range c.Ports {
 			kc.Ports = append(kc.Ports, api_v1.ContainerPort{
-				Name:          fmt.Sprintf("port-%d", p.Port.ContainerPort),
+				Name:          c.Name,
 				ContainerPort: int32(p.Port.ContainerPort),
 			})
 		}

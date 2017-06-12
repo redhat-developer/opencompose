@@ -4,6 +4,7 @@ services:
 - name: database
   containers:
   - image: mariadb:10
+    name: mariadb
     env:
     - name: MYSQL_ROOT_PASSWORD
       value: rootpasswd
@@ -19,6 +20,7 @@ services:
 - name: web
   containers:
   - image: wordpress:4
+    name: wordpress
     env:
     - name: WORDPRESS_DB_HOST
       value: database:3306
