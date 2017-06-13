@@ -45,7 +45,7 @@ source <(kompose completion bash)
 
 ```sh
 source <(kompose completion zsh)
-
+```
 
 ## `opencompose validate`
 
