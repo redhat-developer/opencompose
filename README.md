@@ -1,3 +1,11 @@
+
+# !! DISCONTINUED !!
+
+**This project has been discontinued**
+
+Most of the work from this has been tranformed into new project called [Kedge](https://github.com/kedgeproject/kedge)
+
+
 # OpenCompose
 
 [![Build Status Widget]][Build Status] [![GoDoc Widget]][GoDoc] [![Slack Widget]][Slack]
