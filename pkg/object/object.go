@@ -8,7 +8,10 @@ import (
 	"path"
 
 	"k8s.io/client-go/pkg/api/resource"
+	"k8s.io/client-go/pkg/util/intstr"
 	"k8s.io/client-go/pkg/util/validation"
+
+	api_v1 "k8s.io/client-go/pkg/api/v1"
 )
 
 type PortMapping struct {
@@ -44,12 +47,18 @@ type Mount struct {
 
 type Labels map[string]string
 
+type Health struct {
+	ReadinessProbe *api_v1.Probe
+	LivenessProbe  *api_v1.Probe
+}
+
 type Container struct {
 	Name        string
 	Image       string
 	Environment []EnvVariable
 	Ports       []Port
 	Mounts      []Mount
+	Health      Health
 }
 
 type EmptyDirVolume struct {
@@ -138,6 +147,141 @@ func (m *Mount) validate() error {
 	return nil
 }
 
+func validatePortNumOrName(p intstr.IntOrString) error {
+	var allErrs []string
+	if p.Type == intstr.Int {
+		allErrs = append(allErrs, validation.IsValidPortNum(p.IntValue())...)
+	} else if p.Type == intstr.String {
+		allErrs = append(allErrs, validation.IsValidPortName(p.String())...)
+	} else {
+		allErrs = append(allErrs, fmt.Sprintf("unknown type: %v", p))
+	}
+
+	if len(allErrs) > 0 {
+		return fmt.Errorf("errors with port: %s", strings.Join(allErrs, "\n"))
+	}
+	return nil
+}
+
+func validateExec(e *api_v1.ExecAction) error {
+	if len(e.Command) <= 0 {
+		return fmt.Errorf("required command(s), none given")
+	}
+	return nil
+}
+
+func validateHTTPGet(h *api_v1.HTTPGetAction) error {
+	// validate HTTPHeader
+	var allErrs []string
+	for _, header := range h.HTTPHeaders {
+		allErrs = append(allErrs, validation.IsHTTPHeaderName(header.Name)...)
+	}
+	if len(allErrs) > 0 {
+		return fmt.Errorf("errors with headers: %s", strings.Join(allErrs, "\n"))
+	}
+
+	// validate port
+	if err := validatePortNumOrName(h.Port); err != nil {
+		return err
+	}
+
+	// validate scheme
+	switch h.Scheme {
+	case api_v1.URISchemeHTTP, api_v1.URISchemeHTTPS, "":
+	default:
+		return fmt.Errorf("invalid scheme: %v", h.Scheme)
+	}
+
+	return nil
+}
+
+func validateTCPSocket(t *api_v1.TCPSocketAction) error {
+	if err := validatePortNumOrName(t.Port); err != nil {
+		return err
+	}
+	return nil
+}
+
+func positiveNumber(i int32) error {
+	if i < 0 {
+		return fmt.Errorf("invalid value: %d, must be greater than or equal to 0", i)
+	}
+	return nil
+}
+
+func validateProbes(p *api_v1.Probe) error {
+	// Probe is empty
+	if p == nil {
+		return nil
+	}
+
+	// not all of them can be nil
+	if p.Exec != nil && p.HTTPGet != nil && p.TCPSocket != nil {
+		return fmt.Errorf("Forbidden: may not specify more than 1 handler type, specified 'exec', 'httpGet', 'tcpSocket'")
+	} else if p.Exec != nil && p.HTTPGet != nil && p.TCPSocket == nil {
+		return fmt.Errorf("Forbidden: may not specify more than 1 handler type, specified 'exec', 'httpGet'")
+	} else if p.Exec != nil && p.TCPSocket != nil && p.HTTPGet == nil {
+		return fmt.Errorf("Forbidden: may not specify more than 1 handler type, specified 'exec', 'tcpSocket'")
+	} else if p.HTTPGet != nil && p.TCPSocket != nil && p.Exec == nil {
+		return fmt.Errorf("Forbidden: may not specify more than 1 handler type, specified 'httpGet', 'tcpSocket'")
+	}
+
+	if p.Exec != nil {
+		if err := validateExec(p.Exec); err != nil {
+			return fmt.Errorf("exec: %v", err)
+		}
+	}
+
+	if p.HTTPGet != nil {
+		if err := validateHTTPGet(p.HTTPGet); err != nil {
+			return fmt.Errorf("httpGet: %v", err)
+		}
+	}
+
+	if p.TCPSocket != nil {
+		// validate port
+		if err := validateTCPSocket(p.TCPSocket); err != nil {
+			return fmt.Errorf("tcpSocket: %v", err)
+		}
+	}
+
+	if err := positiveNumber(p.TimeoutSeconds); err != nil {
+		return fmt.Errorf("timeOutSeconds: %v", err)
+	}
+
+	if err := positiveNumber(p.FailureThreshold); err != nil {
+		return fmt.Errorf("failureThreshold: %v", err)
+	}
+
+	if err := positiveNumber(p.InitialDelaySeconds); err != nil {
+		return fmt.Errorf("initialDelaySeconds: %v", err)
+	}
+
+	if err := positiveNumber(p.PeriodSeconds); err != nil {
+		return fmt.Errorf("periodSeconds: %v", err)
+	}
+
+	if err := positiveNumber(p.SuccessThreshold); err != nil {
+		return fmt.Errorf("successThreshold: %v", err)
+	}
+
+	return nil
+}
+
+func (h *Health) validate() error {
+	err := validateProbes(h.LivenessProbe)
+	if err != nil {
+		return fmt.Errorf("failed to validate livenessProbe: %v\n", err)
+	}
+
+	err = validateProbes(h.ReadinessProbe)
+	if err != nil {
+		return fmt.Errorf("failed to validate readinessProbe: %v\n", err)
+	}
+
+	return nil
+}
+
 func (c *Container) validate() error {
 
 	// validate image name
@@ -164,6 +308,12 @@ func (c *Container) validate() error {
 		}
 		allMounts[mount.MountPath] = mount.VolumeRef
 	}
+
+	// validate healthchecks
+	if err := c.Health.validate(); err != nil {
+		return fmt.Errorf("failed to validate health: %v", err)
+	}
+
 	return nil
 }
 

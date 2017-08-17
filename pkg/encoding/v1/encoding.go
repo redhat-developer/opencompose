@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -10,6 +11,8 @@ import (
 	"github.com/redhat-developer/opencompose/pkg/goutil"
 	"github.com/redhat-developer/opencompose/pkg/object"
 	"gopkg.in/yaml.v2"
+
+	api_v1 "k8s.io/client-go/pkg/api/v1"
 )
 
 const (
@@ -219,12 +222,86 @@ func (m *Mount) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
+type Health struct {
+	// Data holder for ReadinessProbe while parsing
+	// Data from the yaml file will be read into this field
+	ReadinessProbeData interface{} `yaml:"readinessProbe,omitempty"`
+	// After certain processing the data in ReadinessProbeData
+	// will be populated into ReadinessProbe for further use
+	ReadinessProbe *api_v1.Probe
+
+	LivenessProbeData interface{} `yaml:"livenessProbe,omitempty"`
+	LivenessProbe     *api_v1.Probe
+}
+
+// If given an interface which has JSONified data of type Probe
+// this function will read the interface and give concrete
+// data strcuture pointer.
+func interfaceToProbe(i interface{}) (*api_v1.Probe, error) {
+	i = util.InterfaceToJSON(i)
+
+	var b []byte
+	var err error
+	if b, err = json.Marshal(i); err != nil {
+		return nil, fmt.Errorf("error: marshalling interface to bytes: %v", err)
+	}
+	var p api_v1.Probe
+	if err = json.Unmarshal(b, &p); err != nil {
+		return nil, fmt.Errorf("error: unmarshalling bytes to Probe: %v", err)
+	}
+	return &p, nil
+}
+
+func (h *Health) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type HealthAlias Health
+	var st struct {
+		HealthAlias `yaml:",inline"`
+		Leftovers   map[string]interface{} `yaml:",inline"` // Catches all undefined fields and must be empty after parsing.
+	}
+
+	err := unmarshal(&st)
+	if err != nil {
+		return err
+	}
+
+	if len(st.Leftovers) > 0 {
+		return util.NewExcessKeysErrorFromMap("Health", st.Leftovers)
+	}
+
+	*h = Health(st.HealthAlias)
+
+	// extract the data from interface into concrete data type 'Probe'
+	if h.ReadinessProbeData != nil {
+		h.ReadinessProbe, err = interfaceToProbe(h.ReadinessProbeData)
+		if err != nil {
+			return fmt.Errorf("readinessProbe: %v", err)
+		}
+		h.ReadinessProbeData = interface{}(nil)
+	}
+
+	// extract the data from interface into concrete data type 'Probe'
+	if h.LivenessProbeData != nil {
+		h.LivenessProbe, err = interfaceToProbe(h.LivenessProbeData)
+		if err != nil {
+			return fmt.Errorf("livenessProbe: %v", err)
+		}
+		h.LivenessProbeData = interface{}(nil)
+	}
+
+	// TODO: Right now we have no way of finding if the excess keys are given
+	// by the user, since we are doing the whole conversion from YAML to JSON
+	// and then parsing it into the internal k8s structs
+
+	return nil
+}
+
 type Container struct {
 	Name   ResourceName  `yaml:"name"`
 	Image  ImageRef      `yaml:"image"`
 	Env    []EnvVariable `yaml:"env,omitempty"`
 	Ports  []Port        `yaml:"ports,omitempty"`
 	Mounts []Mount       `yaml:"mounts,omitempty"`
+	Health *Health       `yaml:"health,omitempty"`
 }
 
 func (c *Container) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -443,6 +520,11 @@ func (d *Decoder) Decode(data []byte) (*object.OpenCompose, error) {
 				}
 
 				oc.Mounts = append(oc.Mounts, mount)
+			}
+
+			if c.Health != nil {
+				oc.Health.LivenessProbe = c.Health.LivenessProbe
+				oc.Health.ReadinessProbe = c.Health.ReadinessProbe
 			}
 
 			// convert env

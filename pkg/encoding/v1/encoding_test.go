@@ -9,6 +9,10 @@ import (
 	"github.com/redhat-developer/opencompose/pkg/goutil"
 	"github.com/redhat-developer/opencompose/pkg/object"
 	"gopkg.in/yaml.v2"
+
+	"k8s.io/client-go/pkg/util/intstr"
+
+	api_v1 "k8s.io/client-go/pkg/api/v1"
 )
 
 func UriAddrFromString(s string) *Fqdn {
@@ -412,6 +416,251 @@ readOnly: true
 	}
 }
 
+func TestInterfaceToProbe(t *testing.T) {
+	tests := []struct {
+		Name     string
+		Succeed  bool
+		RawProbe string
+		Probe    *api_v1.Probe
+	}{
+		{
+			"Probe with exec",
+			true, `
+exec:
+  command:
+  - cat
+  - /tmp/healthy
+initialDelaySeconds: 5
+periodSeconds: 5`,
+			&api_v1.Probe{
+				Handler: api_v1.Handler{
+					Exec: &api_v1.ExecAction{
+						Command: []string{"cat", "/tmp/healthy"},
+					},
+				},
+				InitialDelaySeconds: 5,
+				PeriodSeconds:       5,
+			},
+		},
+		{
+			"Probe with httpGet",
+			true, `
+httpGet:
+  scheme: HTTP`,
+			&api_v1.Probe{
+				Handler: api_v1.Handler{
+					HTTPGet: &api_v1.HTTPGetAction{
+						Scheme: api_v1.URISchemeHTTP,
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+			var input interface{}
+			err := yaml.Unmarshal([]byte(test.RawProbe), &input)
+			if err != nil {
+				t.Fatalf("error unmarshalling input to interface: %v", err)
+			}
+
+			gotProbe, err := interfaceToProbe(input)
+			if err != nil {
+				if test.Succeed {
+					t.Errorf("failed to convert raw interface: %q to Probe, error: %v\n", test.RawProbe, err)
+				}
+				return
+			}
+
+			if !test.Succeed {
+				t.Fatalf("expected %q to fail, but succeeded! Probe object looks like: %s", test.RawProbe, spew.Sprint(gotProbe))
+			}
+
+			if !reflect.DeepEqual(test.Probe, gotProbe) {
+				t.Fatalf("expected %#v\ngot %#v", spew.Sprint(test.Probe), spew.Sprint(gotProbe))
+			}
+
+		})
+
+	}
+}
+
+func TestHealth_UnmarshalYAML(t *testing.T) {
+
+	tests := []struct {
+		Name      string
+		Succeed   bool
+		RawHealth string
+		Health    *Health
+	}{
+		{
+			"Given all fields1",
+			true, `
+livenessProbe:
+  exec:
+    command:
+    - cat
+    - /tmp/healthy
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 1
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+    httpHeaders:
+    - name: X-Custom-Header
+      value: Awesome
+  initialDelaySeconds: 3
+  periodSeconds: 3`,
+			&Health{
+				LivenessProbe: &api_v1.Probe{
+					Handler: api_v1.Handler{
+						Exec: &api_v1.ExecAction{
+							Command: []string{"cat", "/tmp/healthy"},
+						},
+					},
+					InitialDelaySeconds: 5,
+					PeriodSeconds:       5,
+					TimeoutSeconds:      1,
+				},
+				ReadinessProbe: &api_v1.Probe{
+					Handler: api_v1.Handler{
+						HTTPGet: &api_v1.HTTPGetAction{
+							Path: "/healthz",
+							Port: intstr.FromInt(8080),
+							HTTPHeaders: []api_v1.HTTPHeader{
+								{
+									Name:  "X-Custom-Header",
+									Value: "Awesome",
+								},
+							},
+						},
+					},
+					InitialDelaySeconds: 3,
+					PeriodSeconds:       3,
+				},
+			},
+		},
+		{
+			"Given all fields2",
+			true, `
+readinessProbe:
+  tcpSocket:
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 10
+livenessProbe:
+  tcpSocket:
+    port: 8080
+  initialDelaySeconds: 15
+  periodSeconds: 20`,
+			&Health{
+				ReadinessProbe: &api_v1.Probe{
+					Handler: api_v1.Handler{
+						TCPSocket: &api_v1.TCPSocketAction{
+							Port: intstr.FromInt(8080),
+						},
+					},
+					InitialDelaySeconds: 5,
+					PeriodSeconds:       10,
+				},
+				LivenessProbe: &api_v1.Probe{
+					Handler: api_v1.Handler{
+						TCPSocket: &api_v1.TCPSocketAction{
+							Port: intstr.FromInt(8080),
+						},
+					},
+					InitialDelaySeconds: 15,
+					PeriodSeconds:       20,
+				},
+			},
+		},
+		{
+			"Only required fields given",
+			true, `
+readinessProbe:
+  httpGet:
+    port: 8080`,
+			&Health{
+				ReadinessProbe: &api_v1.Probe{
+					Handler: api_v1.Handler{
+						HTTPGet: &api_v1.HTTPGetAction{
+
+							Port: intstr.FromInt(8080),
+						},
+					},
+				},
+			},
+		},
+		{
+			"Extra field given", // FIXME: this should fail ideally, see if an extra field is given
+			true, `
+readinessProbe:
+  httpGet:
+    port: 8080
+  foo: bar`,
+			&Health{
+				ReadinessProbe: &api_v1.Probe{
+					Handler: api_v1.Handler{
+						HTTPGet: &api_v1.HTTPGetAction{
+
+							Port: intstr.FromInt(8080),
+						},
+					},
+				},
+			},
+		},
+		{
+			"Wrong field type given",
+			false, `
+readinessProbe:
+  httpGet: foobar`,
+			nil,
+		},
+		{
+			"No fields given", // UnmarshalYAML won't be even called for empty strings -> default value
+			true,
+			``,
+			&Health{},
+		},
+		{
+			"Required field not given", // FIXME: this should fail ideally, see if the required fields not given
+			true, `
+readinessProbe:
+  initialDelaySeconds: 5`,
+			&Health{
+				ReadinessProbe: &api_v1.Probe{
+					InitialDelaySeconds: 5,
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+
+			var health Health
+			err := yaml.Unmarshal([]byte(test.RawHealth), &health)
+			if err != nil {
+				if test.Succeed {
+					t.Errorf("failed to unmarshal 'Health': %q\nError: %v", test.RawHealth, err)
+				}
+				return
+			}
+
+			if !test.Succeed {
+				t.Fatalf("Expected %q to fail, but succeeded! Health object looks like: %s", test.RawHealth, spew.Sprint(health))
+			}
+
+			if !reflect.DeepEqual(health, *test.Health) {
+				t.Fatalf("Expected: %s\nGot: %s", spew.Sprint(test.Health), spew.Sprint(health))
+			}
+		})
+	}
+}
+
 func TestEmptyDirVolume_UnmarshalYAML(t *testing.T) {
 
 	tests := []struct {
@@ -756,6 +1005,16 @@ services:
       mountPath: /foo/bar
       volumeSubPath: some/path
       readOnly: true
+    health:
+      readinessProbe:
+        httpGet:
+          path: /healthz
+          port: 8080
+          httpHeaders:
+          - name: X-Custom-Header
+            value: Awesome
+        initialDelaySeconds: 3
+        periodSeconds: 3
   emptyDirVolumes:
   - name: empty
 volumes:
@@ -804,6 +1063,24 @@ volumes:
 										MountPath:     "/foo/bar",
 										VolumeSubPath: "some/path",
 										ReadOnly:      true,
+									},
+								},
+								Health: object.Health{
+									ReadinessProbe: &api_v1.Probe{
+										Handler: api_v1.Handler{
+											HTTPGet: &api_v1.HTTPGetAction{
+												Path: "/healthz",
+												Port: intstr.FromInt(8080),
+												HTTPHeaders: []api_v1.HTTPHeader{
+													{
+														Name:  "X-Custom-Header",
+														Value: "Awesome",
+													},
+												},
+											},
+										},
+										InitialDelaySeconds: 3,
+										PeriodSeconds:       3,
 									},
 								},
 							},

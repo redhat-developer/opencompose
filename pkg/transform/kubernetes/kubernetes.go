@@ -241,6 +241,9 @@ func (t *Transformer) CreateDeployments(s *object.Service) ([]runtime.Object, er
 			}
 		}
 
+		kc.LivenessProbe = c.Health.LivenessProbe
+		kc.ReadinessProbe = c.Health.ReadinessProbe
+
 		d.Spec.Template.Spec.Containers = append(d.Spec.Template.Spec.Containers, kc)
 	}
 
